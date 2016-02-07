@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +45,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	boolean bought_ship = false;
+	LinkedList<Asteroid> targets;
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -60,7 +63,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-
+				
 				AbstractAction action;
 				action = getAsteroidCollectorAction(space, ship);
 				actions.put(ship.getId(), action);
@@ -138,7 +141,18 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 	}
 
-
+	
+	/**
+	 * Add asteroids to target array so that ships don't try to grab the same asteroids
+	 */
+	private void addTarget(Asteroid asteroid){
+		targets.add(asteroid);
+		int location = 0;
+		while(location < targets.lastIndexOf(asteroid)){
+			System.out.print(targets.get(location).getId().toString());
+		}
+	}
+	
 	/**
 	 * Find the base for this team nearest to this ship
 	 * 
@@ -175,9 +189,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 		for (Asteroid asteroid : asteroids) {
 			//if (!asteroidToShipMap.containsKey(asteroid)) {
 				if (asteroid.isMineable() && 
-						(asteroid.getResources().getTotal() / space.findShortestDistance(asteroid.getPosition(), ship.getPosition()) ) 
+						(asteroid.getResources().getTotal()/space.findShortestDistance(asteroid.getPosition(), ship.getPosition())) 
 						> bestMoney) {
-					bestMoney = asteroid.getResources().getTotal();
+					bestMoney = (int) (asteroid.getResources().getTotal()/space.findShortestDistance(asteroid.getPosition(), ship.getPosition()));
 					bestAsteroid = asteroid;
 				}
 			//}
@@ -210,8 +224,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		return closestBeacon;
 	}
 
-
-
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
 		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
@@ -221,7 +233,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 			try{
 				if (!asteroid.isAlive()) {
 					finishedAsteroids.add(asteroid);
-					//System.out.println("Removing asteroid from map");
+					//asteroid was collected, so it is no longer a target
+					removeTarget(asteroid);
 				}
 			} catch(Exception e){
 				
@@ -231,10 +244,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 		for (Asteroid asteroid : finishedAsteroids) {
 			asteroidToShipMap.remove(asteroid);
 		}
-
-
 	}
-
+	
+	/**
+	 * remove asteroids from the targeting menu
+	 */
+	private void removeTarget(Asteroid asteroid){
+		targets.remove(asteroid);
+	}
+	
 	/**
 	 * Demonstrates one way to read in knowledge from a file
 	 */
