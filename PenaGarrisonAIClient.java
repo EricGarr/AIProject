@@ -42,6 +42,7 @@ import spacesettlers.utilities.Position;
 public class PenaGarrisonAIClient extends TeamClient {
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
+	boolean bought_ship = false;
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -217,9 +218,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 		for (UUID asteroidId : asteroidToShipMap.keySet()) {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
-			if (!asteroid.isAlive()) {
-				finishedAsteroids.add(asteroid);
-				//System.out.println("Removing asteroid from map");
+			try{
+				if (!asteroid.isAlive()) {
+					finishedAsteroids.add(asteroid);
+					//System.out.println("Removing asteroid from map");
+				}
+			} catch(Exception e){
+				
 			}
 		}
 
@@ -292,7 +297,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		double BASE_BUYING_DISTANCE = 200;
 		boolean bought_base = false;
-		boolean bought_ship = false;
 		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && bought_ship) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
@@ -323,11 +327,11 @@ public class PenaGarrisonAIClient extends TeamClient {
 		
 		// can I buy a ship?
 		//if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && bought_base == false) {
-		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && !(bought_ship)) {
+		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
-					
+					bought_ship = true;
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
 					break;
 				}
