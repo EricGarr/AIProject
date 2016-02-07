@@ -40,6 +40,7 @@ import spacesettlers.utilities.Position;
  * has.  it never shoots (it is a pacifist)
  * 
  * @author amy
+ * modified by Eric Garrison and Francisco Pena
  */
 public class PenaGarrisonAIClient extends TeamClient {
 	HashMap <UUID, Ship> asteroidToShipMap;
@@ -141,9 +142,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 	}
 
-	
 	/**
-	 * Add asteroids to target array so that ships don't try to grab the same asteroids
+	 * Add asteroids to target list so that ships don't try to grab the same asteroids
+	 * currently unused
 	 */
 	private void addTarget(Asteroid asteroid){
 		targets.add(asteroid);
@@ -314,7 +315,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		double BASE_BUYING_DISTANCE = 200;
-		boolean bought_base = false;
 		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && bought_ship) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
@@ -335,7 +335,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 					if (maxDistance > BASE_BUYING_DISTANCE) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
 						//System.out.println("Buying a base!!");
 						break;
 					}
