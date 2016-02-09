@@ -43,10 +43,9 @@ import spacesettlers.utilities.Position;
  * modified by Eric Garrison and Francisco Pena
  */
 public class PenaGarrisonAIClient extends TeamClient {
-	HashMap <UUID, Ship> asteroidToShipMap;
+	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;
 	boolean bought_ship = false;
-	LinkedList<Asteroid> targets;
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -87,7 +86,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Ship ship) {
 		AbstractAction current = ship.getCurrentAction();
 		Position currentPosition = ship.getPosition();
-
+		
 		// aim for a beacon if there isn't enough energy
 		if (ship.getEnergy() < 2000) {
 			Beacon beacon = pickNearestBeacon(space, ship);
@@ -133,24 +132,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 					newAction = new MoveToObjectAction(space, currentPosition, beacon);
 				}
 			} else {
-				asteroidToShipMap.put(asteroid.getId(), ship);
+				targets.put(asteroid.getId(), ship);
 				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
 			}
 			return newAction;
 		} else {
 			return ship.getCurrentAction();
-		}
-	}
-
-	/**
-	 * Add asteroids to target list so that ships don't try to grab the same asteroids
-	 * currently unused
-	 */
-	private void addTarget(Asteroid asteroid){
-		targets.add(asteroid);
-		int location = 0;
-		while(location < targets.lastIndexOf(asteroid)){
-			System.out.print(targets.get(location).getId().toString());
 		}
 	}
 	
@@ -188,7 +175,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		Asteroid bestAsteroid = null;
 
 		for (Asteroid asteroid : asteroids) {
-			//if (!asteroidToShipMap.containsKey(asteroid)) {
+			//if (!targets.containsKey(asteroid)) {
 				if (asteroid.isMineable() && 
 						(asteroid.getResources().getTotal()/space.findShortestDistance(asteroid.getPosition(), ship.getPosition())) 
 						> bestMoney) {
@@ -229,13 +216,11 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
 		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
 
-		for (UUID asteroidId : asteroidToShipMap.keySet()) {
+		for (UUID asteroidId : targets.keySet()) {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
 			try{
-				if (!asteroid.isAlive()) {
+				if (asteroid == null || !asteroid.isAlive()) {
 					finishedAsteroids.add(asteroid);
-					//asteroid was collected, so it is no longer a target
-					removeTarget(asteroid);
 				}
 			} catch(Exception e){
 				
@@ -243,15 +228,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 
 		for (Asteroid asteroid : finishedAsteroids) {
-			asteroidToShipMap.remove(asteroid);
+			targets.remove(asteroid);
 		}
-	}
-	
-	/**
-	 * remove asteroids from the targeting menu
-	 */
-	private void removeTarget(Asteroid asteroid){
-		targets.remove(asteroid);
 	}
 	
 	/**
@@ -259,7 +237,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		asteroidToShipMap = new HashMap<UUID, Ship>();
+		targets = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		
 		XStream xstream = new XStream();
@@ -315,6 +293,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		double BASE_BUYING_DISTANCE = 200;
+		boolean buyBase = true;
 		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && bought_ship) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
@@ -327,28 +306,28 @@ public class PenaGarrisonAIClient extends TeamClient {
 					for (Base base : bases) {
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
 							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
-							if (distance > maxDistance) {
-								maxDistance = distance;
+							if (distance < maxDistance) {
+								buyBase = false;
 							}
 						}
 					}
 
-					if (maxDistance > BASE_BUYING_DISTANCE) {
+					if (buyBase) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						//System.out.println("Buying a base!!");
 						break;
+					} else {
+						buyBase = true;
 					}
 				}
 			}		
 		} 
 		
-		// can I buy a ship?
-		//if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && bought_base == false) {
+		// Buy a ship if possible
 		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
+			bought_ship = true;
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
-					bought_ship = true;
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
 					break;
 				}
@@ -372,8 +351,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
 
-		
 		return powerUps;
 	}
-
+	
+	public void suicide(Ship ship){
+		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
+		SpaceSettlersPowerupEnum powerup = SpaceSettlersPowerupEnum.values()[4];
+		while(ship.getEnergy() > 0){
+			powerUps.put(ship.getId() , powerup);
+		}
+	}
 }
