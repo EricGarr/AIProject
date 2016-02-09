@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -356,7 +354,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	
 	public void suicide(Ship ship){
 		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
-		SpaceSettlersPowerupEnum powerup = SpaceSettlersPowerupEnum.values()[4];
+		SpaceSettlersPowerupEnum powerup = SpaceSettlersPowerupEnum.FIRE_MISSILE;
 		while(ship.getEnergy() > 0){
 			powerUps.put(ship.getId() , powerup);
 		}
