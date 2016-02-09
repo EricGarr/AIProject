@@ -1,4 +1,4 @@
-package pena7065;
+package garr9903;
 
 import java.util.ArrayList;
 
@@ -67,7 +67,7 @@ public class KnowledgeRepresentation {
 		
 		for(int i = 0; i < stuckArrList.size(); i++) {
 			if(Math.abs((int)stuckArrList.get(i).getxVelocity() - vel) < 2) {
-				System.out.println((int)stuckArrList.get(i).getxVelocity());
+				//System.out.println((int)stuckArrList.get(i).getxVelocity());
 				tallyVel++;
 			}
 		}
