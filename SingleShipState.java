@@ -113,16 +113,6 @@ public class SingleShipState {
 		return target;
 	}
 	
-	//checks to see if the ship has gotten stuck on an asteroid
-	public boolean getStuck(Toroidal2DPhysics space){
-		KnowledgeRepresentation kr = new KnowledgeRepresentation();
-		double time = space.getCurrentTimestep();
-		while((space.getCurrentTimestep()-time)>15){
-			kr.add(ship.getPosition());
-		}
-		return kr.checkStuck();
-	}
-	
 	//returns the UUID of the ship
 	public UUID getUUID(){
 		return ship.getId();

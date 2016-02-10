@@ -109,12 +109,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		// aim for a beacon if there isn't enough energy
 		if (ship.getEnergy() < 2000) {
 			AbstractObject target = getNearestBeacon(space, ship);
-			/*// if there is no beacon, then just skip a turn
-			if (beacon == null) {
-				newAction = new DoNothingAction();
-			} else {
-				newAction = new MoveToObjectAction(space, currentPosition, beacon);
-			}*/
 			newAction = new MoveToObjectAction(space, currentPosition, target);
 			aimingForBase.put(ship.getId(), false);
 			return newAction;
@@ -123,7 +117,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		// if the ship has enough resourcesAvailable, take it back to base
 		if (ship.getResources().getTotal() > 500 || space.getCurrentTimestep() >= 19900) {
 			Base base = getNearestBase(space, ship);
-			newAction = new MoveToObjectAction(space, currentPosition, base);
+			newAction = calcMove(space, currentPosition, base.getPosition());
 			aimingForBase.put(ship.getId(), true);
 			return newAction;
 		}
@@ -177,29 +171,31 @@ public class PenaGarrisonAIClient extends TeamClient {
 				closestBeacon = dist;
 			}
 		}
-		/*Set<Base> bases = space.getBases();
+		Set<Base> bases = space.getBases();
 		double closestBase = Double.MAX_VALUE;
 		Base bestBase = null;
 		for(Base base : bases){
-			double dist = space.findShortestDistance(base.getPosition(), ship.getPosition());
-			if(dist < closestBase){
-				bestBase = base;
-				closestBase = dist;
+			if(base.getTeamName() == this.getTeamName() && base.getEnergy() > 1000){
+				double dist = space.findShortestDistance(base.getPosition(), ship.getPosition());
+				if(dist < closestBase){
+					bestBase = base;
+					closestBase = dist;
+				}
 			}
 		}
 		if(closestBase > closestBeacon){
 			return bestBeacon;
 		} else {
 			return bestBase;
-		}*/
-		return bestBeacon;
+		}
+		//return bestBeacon;
 	}
 	
 	Base getNearestBase(Toroidal2DPhysics space, Ship ship){
 		Set<Base> bases = space.getBases();
 		double nearest = Double.MAX_VALUE;
 		Base best = null;
-		/*for (Base base : bases){
+		for (Base base : bases){
 			if(base.getTeamName() == ship.getTeamName() && space.isPathClearOfObstructions(ship.getPosition(), base.getPosition(), space.getAllObjects(), ship.getRadius())){
 				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
 				if(dist < nearest){
@@ -207,7 +203,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					nearest = dist; 
 				}
 			}
-		}*/
+		}
 		if(best == null){
 			for (Base base : bases){
 				if(base.getTeamName() == ship.getTeamName()){
@@ -224,12 +220,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 	
 	AbstractAction calcMove(Toroidal2DPhysics space, Position current, Position target){
 		Vector2D vect = space.findShortestDistanceVector(current, target);
-		/*if(vect.getMagnitude() > 50){
-			vect.setX(vect.getXValue()*5);
-			vect.setY(vect.getYValue()*5);
-		} else {
-			
-		}*/
+		if(vect.getMagnitude() > 10){
+			vect.setX(vect.getXValue()*.5);
+			vect.setY(vect.getYValue()*.5);
+		}
 		return new MoveAction(space, current, target, vect);
 	}
 	
