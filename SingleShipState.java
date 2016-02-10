@@ -35,8 +35,7 @@ public class SingleShipState {
 	
 	//Gets the team name from the game space
 	String getTeamName(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getTeamName();
+		return teamName;
 	}
 	
 	//Gets the ship's current energy from the game space
@@ -164,5 +163,10 @@ public class SingleShipState {
 			}
 		}
 		return best;
+	}
+
+	AbstractAction getCurrentAction(Toroidal2DPhysics space) {
+		Ship self = (Ship) space.getObjectById(ship);
+		return self.getCurrentAction();
 	}
 }

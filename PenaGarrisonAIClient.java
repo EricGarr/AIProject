@@ -41,6 +41,8 @@ import spacesettlers.utilities.Position;
  * modified by Eric Garrison and Francisco Pena
  */
 public class PenaGarrisonAIClient extends TeamClient {
+	GlobalShipState shipHandler;
+	SingleShipState ship;
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;
 	boolean bought_ship = false;
@@ -56,19 +58,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-
+		
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship);
+				action = getAsteroidCollectorAction(space);
 				actions.put(ship.getId(), action);
-				
-			} else {
-				// it is a base.  Heuristically decide when to use the shield (TODO)
-				actions.put(actionable.getId(), new DoNothingAction());
 			}
 		} 
 		return actions;
@@ -80,134 +78,44 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @param ship
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
-			Ship ship) {
-		AbstractAction current = ship.getCurrentAction();
-		Position currentPosition = ship.getPosition();
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space) {
+		AbstractAction current = ship.getCurrentAction(space);
+		Position currentPosition = ship.getPosition(space);
 		
 		// aim for a beacon if there isn't enough energy
-		if (ship.getEnergy() < 2000) {
-			Beacon beacon = pickNearestBeacon(space, ship);
-			AbstractAction newAction = null;
-			// if there is no beacon, then just skip a turn
-			if (beacon == null) {
-				newAction = new DoNothingAction();
-			} else {
-				newAction = new MoveToObjectAction(space, currentPosition, beacon);
-			}
-			aimingForBase.put(ship.getId(), false);
+		if (ship.getCurrentEnergy(space) < 2000) {
+			AbstractAction newAction = shipHandler.goToBeacon();
+			aimingForBase.put(ship.getUUID(), false);
 			return newAction;
 		}
 
 		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 500) {
-			Base base = findNearestBase(space, ship);
-			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
-			aimingForBase.put(ship.getId(), true);
+		if (ship.getResources(space) > 500) {
+			AbstractAction newAction = shipHandler.goToBase();
+			aimingForBase.put(ship.getUUID(), true);
 			return newAction;
 		}
 
 		// did we bounce off the base?
-		if (ship.getResources().getTotal() == 0 && ship.getEnergy() > 2000 && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())) {
+		if (ship.getResources(space) == 0 && ship.getCurrentEnergy(space) > 2000 && aimingForBase.containsKey(ship.getUUID()) && aimingForBase.get(ship.getUUID())) {
 			current = null;
-			aimingForBase.put(ship.getId(), false);
+			aimingForBase.put(ship.getUUID(), false);
 		}
 
 		// otherwise aim for the asteroid
 		if (current == null || current.isMovementFinished(space)) {
-			aimingForBase.put(ship.getId(), false);
-			Asteroid asteroid = pickHighestValueFreeAsteroid(space, ship);
-
+			aimingForBase.put(ship.getUUID(), false);
 			AbstractAction newAction = null;
 
-			if (asteroid == null) {
-				// there is no asteroid available so collect a beacon
-				Beacon beacon = pickNearestBeacon(space, ship);
-				// if there is no beacon, then just skip a turn
-				if (beacon == null) {
-					newAction = new DoNothingAction();
-				} else {
-					newAction = new MoveToObjectAction(space, currentPosition, beacon);
-				}
+			if (ship.getTarget() == null) {
+				newAction = shipHandler.goToBeacon();
 			} else {
-				targets.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
+				newAction = shipHandler.goToAsteroid();
 			}
 			return newAction;
 		} else {
-			return ship.getCurrentAction();
+			return ship.getCurrentAction(space);
 		}
-	}
-	
-	/**
-	 * Find the base for this team nearest to this ship
-	 * 
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private Base findNearestBase(Toroidal2DPhysics space, Ship ship) {
-		double minDistance = Double.MAX_VALUE;
-		Base nearestBase = null;
-
-		for (Base base : space.getBases()) {
-			if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
-				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
-				if (dist < minDistance) {
-					minDistance = dist;
-					nearestBase = base;
-				}
-			}
-		}
-		return nearestBase;
-	}
-
-	/**
-	 * Returns the asteroid of highest value that isn't already being chased by this team
-	 * 
-	 * @return
-	 */
-	private Asteroid pickHighestValueFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
-		Set<Asteroid> asteroids = space.getAsteroids();
-		int bestMoney = Integer.MIN_VALUE;
-		Asteroid bestAsteroid = null;
-
-		for (Asteroid asteroid : asteroids) {
-			//if (!targets.containsKey(asteroid)) {
-				if (asteroid.isMineable() && 
-						(asteroid.getResources().getTotal()/space.findShortestDistance(asteroid.getPosition(), ship.getPosition())) 
-						> bestMoney) {
-					bestMoney = (int) (asteroid.getResources().getTotal()/space.findShortestDistance(asteroid.getPosition(), ship.getPosition()));
-					bestAsteroid = asteroid;
-				}
-			//}
-		}
-		//System.out.println("Best asteroid has " + bestMoney);
-		return bestAsteroid;
-	}
-
-	/**
-	 * Find the nearest beacon to this ship
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private Beacon pickNearestBeacon(Toroidal2DPhysics space, Ship ship) {
-		// get the current beacons
-		Set<Beacon> beacons = space.getBeacons();
-
-		Beacon closestBeacon = null;
-		double bestDistance = Double.POSITIVE_INFINITY;
-
-		for (Beacon beacon : beacons) {
-			double dist = space.findShortestDistance(ship.getPosition(), beacon.getPosition());
-			if (dist < bestDistance) {
-				bestDistance = dist;
-				closestBeacon = beacon;
-			}
-		}
-
-		return closestBeacon;
 	}
 
 	@Override
@@ -237,7 +145,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public void initialize(Toroidal2DPhysics space) {
 		targets = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
+		shipHandler = new GlobalShipState(space);
+		Set<Ship> ships = space.getShips();
+		for(Ship s : ships){
+			if(s.getTeamName() == "PenaGarrison"){
+				ship = new SingleShipState(s);
+			}
+		}
 		
+		/*
 		XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
 
@@ -247,7 +163,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			myKnowledge = new ExampleKnowledge();
-		}
+		}*/
 	}
 
 	/**

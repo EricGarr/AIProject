@@ -82,18 +82,7 @@ public class GlobalShipState {
 		return buy;
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	Ship getShip(Toroidal2DPhysics space){
+		return (Ship) space.getObjectById(myShip.getUUID());
+	}
 }
