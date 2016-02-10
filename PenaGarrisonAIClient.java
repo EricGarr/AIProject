@@ -104,26 +104,26 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Ship ship) {
 		AbstractAction current = ship.getCurrentAction();
 		Position currentPosition = ship.getPosition();
-
+		AbstractAction newAction = null;
+		
 		// aim for a beacon if there isn't enough energy
 		if (ship.getEnergy() < 2000) {
-			Beacon beacon = getNearestBeacon(space, ship);
-			AbstractAction newAction = null;
+			AbstractObject target = getNearestBeacon(space, ship);
 			/*// if there is no beacon, then just skip a turn
 			if (beacon == null) {
 				newAction = new DoNothingAction();
 			} else {
 				newAction = new MoveToObjectAction(space, currentPosition, beacon);
 			}*/
-			newAction = new MoveToObjectAction(space, currentPosition, beacon);
+			newAction = new MoveToObjectAction(space, currentPosition, target);
 			aimingForBase.put(ship.getId(), false);
 			return newAction;
 		}
 
 		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 500) {
+		if (ship.getResources().getTotal() > 500 || space.getCurrentTimestep() >= 19900) {
 			Base base = getNearestBase(space, ship);
-			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
+			newAction = new MoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
 			return newAction;
 		}
@@ -133,45 +133,24 @@ public class PenaGarrisonAIClient extends TeamClient {
 			current = null;
 			aimingForBase.put(ship.getId(), false);
 		}
-
-		// otherwise aim for the asteroid
-		if (current == null || current.isMovementFinished(space)) {
-			aimingForBase.put(ship.getId(), false);
-			Asteroid asteroid = getBestAsteroid(space, ship);
-
-			AbstractAction newAction = null;
-			/*
-			if (asteroid == null) {
-				// there is no asteroid available so collect a beacon
-				Beacon beacon = pickNearestBeacon(space, ship);
-				// if there is no beacon, then just skip a turn
-				if (beacon == null) {
-					newAction = new DoNothingAction();
-				} else {
-					newAction = new MoveToObjectAction(space, currentPosition, beacon);
-				}
-			} else {
-				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
-			}*/
-			if (asteroid != null) {
-				targets.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
-			}
-			
-			return newAction;
-		} 
 		
-		return ship.getCurrentAction();
-	}
-	
-	MoveAction calcMove(Toroidal2DPhysics space, Position current, Position target){
-		double speed = 15;
-		Vector2D vect = new Vector2D(space.findShortestDistanceVector(current, target));
-		vect.setX(vect.getXValue()*speed);
-		vect.setY(vect.getYValue()*speed);
-		MoveAction move = new MoveAction(space, current, target, vect);
-		return move;
+		//if nothing else triggered, collect an asteroid
+		aimingForBase.put(ship.getId(), false);
+		Asteroid asteroid = getBestAsteroid(space, ship);
+		
+		if (asteroid == null) {
+			asteroid = getBestAsteroid(space, ship);
+		}
+		if (asteroid != null) {
+			targets.put(asteroid.getId(), ship);
+			newAction = calcMove(space, currentPosition, asteroid.getPosition());
+		}
+		
+		if(newAction != null){
+			return newAction;
+		} else {
+			return new DoNothingAction();
+		}
 	}
 	
 	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship){
@@ -187,34 +166,71 @@ public class PenaGarrisonAIClient extends TeamClient {
 		return best;
 	}
 	
-	Beacon getNearestBeacon(Toroidal2DPhysics space, Ship ship){
+	AbstractObject getNearestBeacon(Toroidal2DPhysics space, Ship ship){
 		Set<Beacon> beacons = space.getBeacons();
-		double closest = Double.MAX_VALUE;
-		Beacon best = null;
+		double closestBeacon = Double.MAX_VALUE;
+		Beacon bestBeacon = null;
 		for(Beacon beacon : beacons){
 			double dist = space.findShortestDistance(beacon.getPosition(), ship.getPosition());
-			if(dist < closest){
-				best = beacon;
-				closest = dist;
+			if(dist < closestBeacon){
+				bestBeacon = beacon;
+				closestBeacon = dist;
 			}
 		}
-		return best;
+		/*Set<Base> bases = space.getBases();
+		double closestBase = Double.MAX_VALUE;
+		Base bestBase = null;
+		for(Base base : bases){
+			double dist = space.findShortestDistance(base.getPosition(), ship.getPosition());
+			if(dist < closestBase){
+				bestBase = base;
+				closestBase = dist;
+			}
+		}
+		if(closestBase > closestBeacon){
+			return bestBeacon;
+		} else {
+			return bestBase;
+		}*/
+		return bestBeacon;
 	}
 	
 	Base getNearestBase(Toroidal2DPhysics space, Ship ship){
 		Set<Base> bases = space.getBases();
 		double nearest = Double.MAX_VALUE;
 		Base best = null;
-		for (Base base : bases){
-			if(base.getTeamName() == ship.getTeamName()){
+		/*for (Base base : bases){
+			if(base.getTeamName() == ship.getTeamName() && space.isPathClearOfObstructions(ship.getPosition(), base.getPosition(), space.getAllObjects(), ship.getRadius())){
 				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
 				if(dist < nearest){
 					best = base;
 					nearest = dist; 
 				}
 			}
+		}*/
+		if(best == null){
+			for (Base base : bases){
+				if(base.getTeamName() == ship.getTeamName()){
+					double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
+					if(dist < nearest){
+						best = base;
+						nearest = dist; 
+					}
+				}
+			}
 		}
 		return best;
+	}
+	
+	AbstractAction calcMove(Toroidal2DPhysics space, Position current, Position target){
+		Vector2D vect = space.findShortestDistanceVector(current, target);
+		/*if(vect.getMagnitude() > 50){
+			vect.setX(vect.getXValue()*5);
+			vect.setY(vect.getYValue()*5);
+		} else {
+			
+		}*/
+		return new MoveAction(space, current, target, vect);
 	}
 	
 	@Override
@@ -294,6 +310,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		double BASE_BUYING_DISTANCE = 200;
 		boolean buyBase = true;
+		
+		if(purchaseCosts.canAfford(PurchaseTypes.POWERUP_DOUBLE_MAX_ENERGY, resourcesAvailable)){
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				if (actionableObject instanceof Ship) {
+					Ship ship = (Ship) actionableObject;
+					purchases.put(ship.getId(), PurchaseTypes.POWERUP_DOUBLE_MAX_ENERGY);
+				}
+			}
+		}
 		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && bought_ship) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
