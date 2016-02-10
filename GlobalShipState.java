@@ -1,11 +1,13 @@
 package garr9903;
 
+import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
+import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
 import spacesettlers.objects.Ship;
@@ -18,54 +20,47 @@ public class GlobalShipState {
 	Set<Asteroid> asteroids;
 	Set<Base> bases;
 	Set<Beacon> beacons;
-	String teamName;
+	//HashMap<UUID, SingleShipState> obsticles;
 	SingleShipState myShip;
 	Toroidal2DPhysics space;
+	String teamName;
 	
 	GlobalShipState(){
 		
 	}
 	
-	GlobalShipState(Toroidal2DPhysics space){
+	GlobalShipState(Toroidal2DPhysics space, String teamName){
 		ships = space.getShips();
 		asteroids = space.getAsteroids();
 		bases = space.getBases();
 		beacons = space.getBeacons();
-		teamName = "PenaGarrison";
+		this.teamName = teamName; 
 		for(Ship ship : ships){
-			if (ship.getTeamName() == teamName){
+			if(ship.getTeamName() == teamName){
 				myShip = new SingleShipState(ship);
 			}
 		}
+		//implement obsticle tracking here
 		this.space = space;
 	}
-	
-	void setTarget(){
-		myShip.setTarget(myShip.getBestAsteroid(space));
-	}
-	
-	AbstractAction goToAsteroid(){
-		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getTarget());
+		
+	AbstractAction goToAsteroid(Asteroid asteroid){
+		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(), asteroid);
+		myShip.setTarget(asteroid);
 		return mvo;
 	}
 	
-	AbstractAction handleChase(Ship ship){
-		AbstractAction mv = ship.getCurrentAction();
-		if(myShip.getChase(space)){
-			Vector2D currVector = new Vector2D(ship.getCurrentAction().getMovement(space, (Ship) space.getObjectById(myShip.getUUID())).getTranslationalAcceleration());
-			Vector2D newVector = new Vector2D(currVector.getAngle(), currVector.getMagnitude()*2);
-			mv = new MoveAction(space, myShip.getPosition(space), myShip.getTarget().getPosition(), newVector);
-		}
-		return mv;
-	}
-	
 	AbstractAction goToBeacon(){
-		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getNearestBeacon(space));
+		Beacon beacon = myShip.getNearestBeacon(space);
+		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(), beacon);
+		myShip.setTarget(beacon);
 		return mvo;
 	}
 	
 	AbstractAction goToBase(){
-		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getNearestBase(space));
+		Base base = myShip.getNearestBase(space);
+		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(), base);
+		myShip.setTarget(base);
 		return mvo;
 	}
 	
@@ -74,7 +69,7 @@ public class GlobalShipState {
 		bases = space.getBases();
 		double minDist = 300;
 		for(Base base : bases){
-			if(base.getTeamName() == teamName && space.findShortestDistance(base.getPosition(), myShip.getPosition(space)) < minDist){
+			if(base.getTeamName() == teamName && space.findShortestDistance(base.getPosition(), myShip.getPosition()) < minDist){
 				buy = false;
 			}
 		}

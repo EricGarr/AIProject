@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import spacesettlers.actions.AbstractAction;
+import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Beacon;
 import spacesettlers.objects.Ship;
@@ -15,12 +16,10 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 
 public class SingleShipState {
 	//asteroid the ship is to pickup
-	Asteroid target;
+	AbstractObject target;
 	//use to get info on the ship
 	//Storing just the UUID so that queries always return the correct values
-	UUID ship;
-	//used to ensure client is only messing with its own ships
-	String teamName;
+	Ship ship;
 	
 	public SingleShipState(){
 		//default constructor, never use.
@@ -29,67 +28,58 @@ public class SingleShipState {
 	
 	public SingleShipState(Ship s){
 		//Actual constructor
-		ship = s.getId();
-		teamName = s.getTeamName();
+		ship = s;
 	}
 	
 	//Gets the team name from the game space
-	String getTeamName(Toroidal2DPhysics space){
-		return teamName;
+	public String getTeamName(){
+		return ship.getTeamName();
 	}
 	
 	//Gets the ship's current energy from the game space
-	double getCurrentEnergy(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getEnergy();
+	public double getCurrentEnergy(){
+		return ship.getEnergy();
 	}
 	
 	//Gets the total number of resources being carried by the ship from the game space 
-	double getResources(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getResources().getTotal();
+	public double getResources(){
+		return ship.getResources().getTotal();
 	}
 	
 	//Gets the amount of water the ship has
-	double getWater(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getResources().getResourceQuantity(ResourceTypes.WATER);
+	public double getWater(){
+		return ship.getResources().getResourceQuantity(ResourceTypes.WATER);
 	}
 	
 	//Gets the amount of fuel the ship has
-	double getFuel(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getResources().getResourceQuantity(ResourceTypes.FUEL);
+	public double getFuel(){
+		return ship.getResources().getResourceQuantity(ResourceTypes.FUEL);
 	}
 	
 	//Gets the amount of metal the ship has
-	double getMetal(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getResources().getResourceQuantity(ResourceTypes.METALS);
+	public double getMetal(){
+		return ship.getResources().getResourceQuantity(ResourceTypes.METALS);
 	}
 	
 	//finds the ship's current action
 	//used to check for if the ship is stuck or endlessly chasing an asteroid
-	AbstractAction getAction(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getCurrentAction();
+	public AbstractAction getAction(){
+		return ship.getCurrentAction();
 	}
 	
 	//gets the ships current position in the game
-	Position getPosition(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getPosition();
+	public Position getPosition(){
+		return ship.getPosition();
 	}
 	
 	//finds the base nearest to the ship
-	Base getNearestBase(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
+	public Base getNearestBase(Toroidal2DPhysics space){
 		Set<Base> bases = space.getBases();
 		double nearest = Double.MAX_VALUE;
 		Base best = null;
 		for (Base base : bases){
-			if(base.getTeamName() == self.getTeamName()){
-				double dist = space.findShortestDistance(self.getPosition(), base.getPosition());
+			if(base.getTeamName() == ship.getTeamName()){
+				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
 				if(dist < nearest){
 					best = base;
 					nearest = dist; 
@@ -100,63 +90,51 @@ public class SingleShipState {
 	}
 	
 	//returns the best asteroid in terms of value/distance
-	Asteroid getBestAsteroid(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
+	public Asteroid getBestAsteroid(Toroidal2DPhysics space){
 		Set<Asteroid> asteroids = space.getAsteroids();
 		double test = Double.MIN_VALUE;
 		Asteroid best = null;
 		for(Asteroid ast : asteroids){
-			if(ast.getResources().getTotal() / space.findShortestDistance(self.getPosition(), ast.getPosition()) > test){
+			if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
 				best = ast;
-				test = ast.getResources().getTotal() / space.findShortestDistance(self.getPosition(), ast.getPosition());
+				test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
 			}
 		}
 		return best;
 	}
 	
 	//sets the ship's target asteroid
-	void setTarget(Asteroid ast){
-		target = ast;
+	public void setTarget(AbstractObject a){
+		target = a;
 	}
 	
 	//returns the ship's target asteroid
-	Asteroid getTarget(){
+	public AbstractObject getTarget(){
 		return target;
 	}
 	
-	//checks to see if the ship has gotten into an endless chase state
-	boolean getChase(Toroidal2DPhysics space){
-		KnowledgeRepresentation kr = new KnowledgeRepresentation();
-		double time = space.getCurrentTimestep();
-		while((space.getCurrentTimestep()-time)>15){
-			kr.add(space.getObjectById(ship).getPosition());
-		}
-		return kr.checkChase();
-	}
-	
 	//checks to see if the ship has gotten stuck on an asteroid
-	boolean getStuck(Toroidal2DPhysics space){
+	public boolean getStuck(Toroidal2DPhysics space){
 		KnowledgeRepresentation kr = new KnowledgeRepresentation();
 		double time = space.getCurrentTimestep();
 		while((space.getCurrentTimestep()-time)>15){
-			kr.add(space.getObjectById(ship).getPosition());
+			kr.add(ship.getPosition());
 		}
 		return kr.checkStuck();
 	}
 	
 	//returns the UUID of the ship
-	UUID getUUID(){
-		return ship;
+	public UUID getUUID(){
+		return ship.getId();
 	}
 	
 	//finds the beacon closest to the ship
-	Beacon getNearestBeacon(Toroidal2DPhysics space){
-		Ship self = (Ship) space.getObjectById(ship);
+	public Beacon getNearestBeacon(Toroidal2DPhysics space){
 		Set<Beacon> beacons = space.getBeacons();
 		double closest = Double.MAX_VALUE;
 		Beacon best = null;
 		for(Beacon beacon : beacons){
-			double dist = space.findShortestDistance(beacon.getPosition(), self.getPosition());
+			double dist = space.findShortestDistance(beacon.getPosition(), ship.getPosition());
 			if(dist < closest){
 				best = beacon;
 				closest = dist;
@@ -165,8 +143,7 @@ public class SingleShipState {
 		return best;
 	}
 
-	AbstractAction getCurrentAction(Toroidal2DPhysics space) {
-		Ship self = (Ship) space.getObjectById(ship);
-		return self.getCurrentAction();
+	public AbstractAction getCurrentAction() {
+		return ship.getCurrentAction();
 	}
 }

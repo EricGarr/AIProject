@@ -14,6 +14,7 @@ import com.thoughtworks.xstream.XStreamException;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
+import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
@@ -30,6 +31,7 @@ import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
+import spacesettlers.utilities.Vector2D;
 
 /**
  * Collects nearby asteroids and brings them to the base, picks up beacons as needed for energy.
@@ -42,10 +44,29 @@ import spacesettlers.utilities.Position;
  */
 public class PenaGarrisonAIClient extends TeamClient {
 	GlobalShipState shipHandler;
-	SingleShipState ship;
+	SingleShipState myShip;
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;
-	boolean bought_ship = false;
+	boolean bought_ship = true;
+	ArrayList<Double> chaseArrList;
+	
+	
+	/*
+	public void addDist(double dist) {
+		if(chaseArrList.size() == 15) {
+			chaseArrList.remove(0);
+			chaseArrList.add(dist);
+		}
+		else {
+			chaseArrList.add(dist);
+		}
+	}
+	
+	public boolean checkChase(AbstractAction current) {
+		boolean chase = true;
+		
+		return chase;
+	}*/
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -58,14 +79,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
+		shipHandler = new GlobalShipState(space, super.getTeamName());
 		
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-				
+				myShip = new SingleShipState(ship);
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space);
+				action = getAsteroidCollectorAction(space, ship);
 				actions.put(ship.getId(), action);
 			}
 		} 
@@ -78,58 +100,131 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @param ship
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space) {
-		AbstractAction current = ship.getCurrentAction(space);
-		Position currentPosition = ship.getPosition(space);
-		
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
+			Ship ship) {
+		AbstractAction current = ship.getCurrentAction();
+		Position currentPosition = ship.getPosition();
+
 		// aim for a beacon if there isn't enough energy
-		if (ship.getCurrentEnergy(space) < 2000) {
-			AbstractAction newAction = shipHandler.goToBeacon();
-			aimingForBase.put(ship.getUUID(), false);
+		if (ship.getEnergy() < 2000) {
+			Beacon beacon = getNearestBeacon(space, ship);
+			AbstractAction newAction = null;
+			/*// if there is no beacon, then just skip a turn
+			if (beacon == null) {
+				newAction = new DoNothingAction();
+			} else {
+				newAction = new MoveToObjectAction(space, currentPosition, beacon);
+			}*/
+			newAction = new MoveToObjectAction(space, currentPosition, beacon);
+			aimingForBase.put(ship.getId(), false);
 			return newAction;
 		}
 
 		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources(space) > 500) {
-			AbstractAction newAction = shipHandler.goToBase();
-			aimingForBase.put(ship.getUUID(), true);
+		if (ship.getResources().getTotal() > 500) {
+			Base base = getNearestBase(space, ship);
+			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
+			aimingForBase.put(ship.getId(), true);
 			return newAction;
 		}
 
 		// did we bounce off the base?
-		if (ship.getResources(space) == 0 && ship.getCurrentEnergy(space) > 2000 && aimingForBase.containsKey(ship.getUUID()) && aimingForBase.get(ship.getUUID())) {
+		if (ship.getResources().getTotal() == 0 && ship.getEnergy() > 2000 && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())) {
 			current = null;
-			aimingForBase.put(ship.getUUID(), false);
+			aimingForBase.put(ship.getId(), false);
 		}
 
 		// otherwise aim for the asteroid
 		if (current == null || current.isMovementFinished(space)) {
-			aimingForBase.put(ship.getUUID(), false);
+			aimingForBase.put(ship.getId(), false);
+			Asteroid asteroid = getBestAsteroid(space, ship);
+
 			AbstractAction newAction = null;
-
-			if (ship.getTarget() == null) {
-				newAction = shipHandler.goToBeacon();
+			/*
+			if (asteroid == null) {
+				// there is no asteroid available so collect a beacon
+				Beacon beacon = pickNearestBeacon(space, ship);
+				// if there is no beacon, then just skip a turn
+				if (beacon == null) {
+					newAction = new DoNothingAction();
+				} else {
+					newAction = new MoveToObjectAction(space, currentPosition, beacon);
+				}
 			} else {
-				newAction = shipHandler.goToAsteroid();
+				asteroidToShipMap.put(asteroid.getId(), ship);
+				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
+			}*/
+			if (asteroid != null) {
+				targets.put(asteroid.getId(), ship);
+				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
 			}
+			
 			return newAction;
-		} else {
-			return ship.getCurrentAction(space);
-		}
+		} 
+		
+		return ship.getCurrentAction();
 	}
-
+	
+	MoveAction calcMove(Toroidal2DPhysics space, Position current, Position target){
+		double speed = 15;
+		Vector2D vect = new Vector2D(space.findShortestDistanceVector(current, target));
+		vect.setX(vect.getXValue()*speed);
+		vect.setY(vect.getYValue()*speed);
+		MoveAction move = new MoveAction(space, current, target, vect);
+		return move;
+	}
+	
+	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship){
+		Set<Asteroid> asteroids = space.getAsteroids();
+		double test = Double.MIN_VALUE;
+		Asteroid best = null;
+		for(Asteroid ast : asteroids){
+			if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+				best = ast;
+				test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+			}
+		}
+		return best;
+	}
+	
+	Beacon getNearestBeacon(Toroidal2DPhysics space, Ship ship){
+		Set<Beacon> beacons = space.getBeacons();
+		double closest = Double.MAX_VALUE;
+		Beacon best = null;
+		for(Beacon beacon : beacons){
+			double dist = space.findShortestDistance(beacon.getPosition(), ship.getPosition());
+			if(dist < closest){
+				best = beacon;
+				closest = dist;
+			}
+		}
+		return best;
+	}
+	
+	Base getNearestBase(Toroidal2DPhysics space, Ship ship){
+		Set<Base> bases = space.getBases();
+		double nearest = Double.MAX_VALUE;
+		Base best = null;
+		for (Base base : bases){
+			if(base.getTeamName() == ship.getTeamName()){
+				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
+				if(dist < nearest){
+					best = base;
+					nearest = dist; 
+				}
+			}
+		}
+		return best;
+	}
+	
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
 		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
 
 		for (UUID asteroidId : targets.keySet()) {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
-			try{
-				if (asteroid == null || !asteroid.isAlive()) {
-					finishedAsteroids.add(asteroid);
-				}
-			} catch(Exception e){
-				
+			if (asteroid == null || !asteroid.isAlive()) {
+				finishedAsteroids.add(asteroid);
 			}
 		}
 
@@ -145,25 +240,16 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public void initialize(Toroidal2DPhysics space) {
 		targets = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
-		shipHandler = new GlobalShipState(space);
-		Set<Ship> ships = space.getShips();
-		for(Ship s : ships){
-			if(s.getTeamName() == "PenaGarrison"){
-				ship = new SingleShipState(s);
-			}
-		}
 		
-		/*
 		XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
-
 		try { 
 			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
 		} catch (XStreamException e) {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			myKnowledge = new ExampleKnowledge();
-		}*/
+		}
 	}
 
 	/**
@@ -216,7 +302,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					Set<Base> bases = space.getBases();
 
 					// how far away is this ship to a base of my team?
-					double maxDistance = Double.MIN_VALUE;
+					double maxDistance = BASE_BUYING_DISTANCE;
 					for (Base base : bases) {
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
 							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
