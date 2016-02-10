@@ -3,6 +3,7 @@ package garr9903;
 import java.util.Set;
 import java.util.UUID;
 
+import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.objects.Asteroid;
@@ -43,21 +44,29 @@ public class GlobalShipState {
 		myShip.setTarget(myShip.getBestAsteroid(space));
 	}
 	
-	void goToAsteroid(){
+	AbstractAction goToAsteroid(){
 		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getTarget());
+		return mvo;
+	}
+	
+	AbstractAction handleChase(Ship ship){
+		AbstractAction mv = ship.getCurrentAction();
 		if(myShip.getChase(space)){
-			Vector2D currVector = new Vector2D(mvo.getMovement(space, (Ship) space.getObjectById(myShip.getUUID())).getTranslationalAcceleration());
+			Vector2D currVector = new Vector2D(ship.getCurrentAction().getMovement(space, (Ship) space.getObjectById(myShip.getUUID())).getTranslationalAcceleration());
 			Vector2D newVector = new Vector2D(currVector.getAngle(), currVector.getMagnitude()*2);
-			MoveAction mv = new MoveAction(space, myShip.getPosition(space), myShip.getTarget().getPosition(), newVector);
+			mv = new MoveAction(space, myShip.getPosition(space), myShip.getTarget().getPosition(), newVector);
 		}
+		return mv;
 	}
 	
-	void goToBeacon(){
+	AbstractAction goToBeacon(){
 		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getNearestBeacon(space));
+		return mvo;
 	}
 	
-	void goToBase(){
+	AbstractAction goToBase(){
 		MoveToObjectAction mvo = new MoveToObjectAction(space, myShip.getPosition(space), myShip.getNearestBase(space));
+		return mvo;
 	}
 	
 	boolean buyBase(){
