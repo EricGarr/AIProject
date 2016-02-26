@@ -30,6 +30,7 @@ import spacesettlers.objects.Ship;
 import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
 import spacesettlers.simulator.Toroidal2DPhysics;
+import spacesettlers.utilities.Movement;
 import spacesettlers.utilities.Position;
 import spacesettlers.utilities.Vector2D;
 
@@ -43,30 +44,11 @@ import spacesettlers.utilities.Vector2D;
  * modified by Eric Garrison and Francisco Pena
  */
 public class PenaGarrisonAIClient extends TeamClient {
-	GlobalShipState shipHandler;
 	SingleShipState myShip;
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;
 	boolean bought_ship = true;
 	ArrayList<Double> chaseArrList;
-	
-	
-	/*
-	public void addDist(double dist) {
-		if(chaseArrList.size() == 15) {
-			chaseArrList.remove(0);
-			chaseArrList.add(dist);
-		}
-		else {
-			chaseArrList.add(dist);
-		}
-	}
-	
-	public boolean checkChase(AbstractAction current) {
-		boolean chase = true;
-		
-		return chase;
-	}*/
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -79,7 +61,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		shipHandler = new GlobalShipState(space, super.getTeamName());
 		
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
@@ -109,7 +90,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		// aim for a beacon if there isn't enough energy
 		if (ship.getEnergy() < 2000) {
 			AbstractObject target = getNearestBeacon(space, ship);
-			newAction = new MoveToObjectAction(space, currentPosition, target);
+			newAction = calcMove(space, currentPosition, target.getPosition());
 			aimingForBase.put(ship.getId(), false);
 			return newAction;
 		}
@@ -219,11 +200,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	AbstractAction calcMove(Toroidal2DPhysics space, Position current, Position target){
-		Vector2D vect = space.findShortestDistanceVector(current, target);
-		if(vect.getMagnitude() > 10){
-			vect.setX(vect.getXValue()*.5);
-			vect.setY(vect.getYValue()*.5);
-		}
+		Vector2D vect = space.findShortestDistanceVector(current, target).getUnitVector();
+		vect.setX(vect.getXValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
+		vect.setY(vect.getYValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
+		
 		return new MoveAction(space, current, target, vect);
 	}
 	
@@ -310,6 +290,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				if (actionableObject instanceof Ship) {
 					Ship ship = (Ship) actionableObject;
 					purchases.put(ship.getId(), PurchaseTypes.POWERUP_DOUBLE_MAX_ENERGY);
+					ship.addPowerup(SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY);
 				}
 			}
 		}
@@ -355,12 +336,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 		}
 
-
 		return purchases;
 	}
 
 	/**
-	 * The pacifist asteroid collector doesn't use power ups 
 	 * @param space
 	 * @param actionableObjects
 	 * @return
@@ -369,15 +348,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
-
-		return powerUps;
-	}
-	
-	public void suicide(Ship ship){
-		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
-		SpaceSettlersPowerupEnum powerup = SpaceSettlersPowerupEnum.FIRE_MISSILE;
-		while(ship.getEnergy() > 0){
-			powerUps.put(ship.getId() , powerup);
+		
+		Ship ship = (Ship) space.getObjectById(myShip.getUUID());
+		
+		if(ship.getCurrentPowerups().contains(SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY)){
+			powerUps.put(ship.getId(), SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY);
 		}
+		
+		return powerUps;
 	}
 }

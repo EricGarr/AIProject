@@ -5,18 +5,12 @@ import java.util.UUID;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.objects.AbstractObject;
-import spacesettlers.objects.Asteroid;
-import spacesettlers.objects.Beacon;
 import spacesettlers.objects.Ship;
-import spacesettlers.objects.Base;
+import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourceTypes;
 import spacesettlers.utilities.Position;
-import spacesettlers.utilities.Vector2D;
-import spacesettlers.simulator.Toroidal2DPhysics;
 
 public class SingleShipState {
-	//asteroid the ship is to pickup
-	AbstractObject target;
 	//use to get info on the ship
 	//Storing just the UUID so that queries always return the correct values
 	Ship ship;
@@ -72,68 +66,16 @@ public class SingleShipState {
 		return ship.getPosition();
 	}
 	
-	//finds the base nearest to the ship
-	public Base getNearestBase(Toroidal2DPhysics space){
-		Set<Base> bases = space.getBases();
-		double nearest = Double.MAX_VALUE;
-		Base best = null;
-		for (Base base : bases){
-			if(base.getTeamName() == ship.getTeamName()){
-				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
-				if(dist < nearest){
-					best = base;
-					nearest = dist; 
-				}
-			}
-		}
-		return best;
-	}
-	
-	//returns the best asteroid in terms of value/distance
-	public Asteroid getBestAsteroid(Toroidal2DPhysics space){
-		Set<Asteroid> asteroids = space.getAsteroids();
-		double test = Double.MIN_VALUE;
-		Asteroid best = null;
-		for(Asteroid ast : asteroids){
-			if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-				best = ast;
-				test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-			}
-		}
-		return best;
-	}
-	
-	//sets the ship's target asteroid
-	public void setTarget(AbstractObject a){
-		target = a;
-	}
-	
-	//returns the ship's target asteroid
-	public AbstractObject getTarget(){
-		return target;
-	}
-	
 	//returns the UUID of the ship
 	public UUID getUUID(){
 		return ship.getId();
 	}
 	
-	//finds the beacon closest to the ship
-	public Beacon getNearestBeacon(Toroidal2DPhysics space){
-		Set<Beacon> beacons = space.getBeacons();
-		double closest = Double.MAX_VALUE;
-		Beacon best = null;
-		for(Beacon beacon : beacons){
-			double dist = space.findShortestDistance(beacon.getPosition(), ship.getPosition());
-			if(dist < closest){
-				best = beacon;
-				closest = dist;
-			}
-		}
-		return best;
-	}
-
 	public AbstractAction getCurrentAction() {
 		return ship.getCurrentAction();
+	}
+	
+	public Set<SpaceSettlersPowerupEnum> getPowerUps(){
+		return ship.getCurrentPowerups();
 	}
 }
