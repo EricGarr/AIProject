@@ -8,14 +8,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
+/*
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
-
+*/
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.MoveAction;
-import spacesettlers.actions.MoveToObjectAction;
+//import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
@@ -48,7 +48,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;
 	boolean bought_ship = true;
-	ArrayList<Double> chaseArrList;
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -231,7 +230,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		targets = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		
-		XStream xstream = new XStream();
+		/*XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
 		try { 
 			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
@@ -239,7 +238,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			myKnowledge = new ExampleKnowledge();
-		}
+		}*/
 	}
 
 	/**
@@ -249,7 +248,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
-		XStream xstream = new XStream();
+		/*XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
 
 		try { 
@@ -262,7 +261,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			myKnowledge = new ExampleKnowledge();
-		}
+		}*/
 	}
 
 	@Override
