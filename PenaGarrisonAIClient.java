@@ -51,12 +51,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 	SingleShipState myShip;
 	//current targets
 	HashMap <UUID, Ship> targets;
-	//HashMap <UUID, Boolean> aimingForBase;
+	HashMap <UUID, Boolean> aimingForBase;
 	
 	//nodes of the graph
 	Set<Node> nodes;
 	//furthest distance a node and "see" another node
-	int maxNodeView = 400;
+	int maxNodeView = 130;
 	//stack of moves returned by A*
 	Stack<Node> moves;
 	//how often can A* be re-run
@@ -105,41 +105,36 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Position currentPosition = ship.getPosition();
 			AbstractAction newAction = current;
 			myShip = new SingleShipState(ship);
-			AbstractObject target;
+			AbstractObject target = null;
 			//makeGraph(Position current, Position target, Toroidal2DPhysics space)
 			if(space.getCurrentTimestep() - lastRun >= REMAP){
 				lastRun = space.getCurrentTimestep();
+				System.out.println(myShip.getState());
 				// aim for a beacon if there isn't enough energy
 				if (myShip.getState() == SingleShipState.Target.ENERGY) {
 					target = getNearestBeacon(space, ship);
-					/*moves = makeGraph(ship.getPosition(), target.getPosition(), space);
-					newAction = calcMove(space, currentPosition, target.getPosition());
-					//aimingForBase.put(ship.getId(), false);
-					return newAction;*/
+					aimingForBase.put(ship.getId(), false);
 				}
-		
-				// if the ship has enough resourcesAvailable, take it back to base
+				
+				// if the ship has enough resourcesAvailable or time is about up: take them back to base
+				//
 				if (myShip.getState() == SingleShipState.Target.BASE || space.getCurrentTimestep() >= 19900) {
+					//choose a base
 					target = getNearestBase(space, ship);
-					//newAction = calcMove(space, currentPosition, base.getPosition());
-					//aimingForBase.put(ship.getId(), true);
-					//return newAction;
+					aimingForBase.put(ship.getId(), true);
 				}
-		
-				// did we bounce off the base?
-				// && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())
-				if (ship.getResources().getTotal() == 0){
+				
+				//did I turn in my resources?
+				if (ship.getResources().getTotal() == 0 && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())){
 					current = null;
-					//aimingForBase.put(ship.getId(), false);
+					aimingForBase.put(ship.getId(), false);
 				}
 				
-				//if nothing else triggered, collect an asteroid
-				//aimingForBase.put(ship.getId(), false);
-				target = getBestAsteroid(space, ship);
-				
+				//if nothing else is needed, get an asteroid
 				if (target == null || current == null) {
 					target = getBestAsteroid(space, ship);
 					targets.put(target.getId(), ship);
+					aimingForBase.put(ship.getId(), false);
 				}
 				System.out.println("beginning A*");
 				moves = makeGraph(ship.getPosition(), target.getPosition(), space);
@@ -288,7 +283,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		targets = new HashMap<UUID, Ship>();
 		makeNodes();
 		moves = new Stack<Node>();
-		//aimingForBase = new HashMap<UUID, Boolean>();
+		aimingForBase = new HashMap<UUID, Boolean>();
 		
 		/*XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
@@ -431,8 +426,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	private void makeNodes(){
 		//make a set of the nodes
 		nodes = new HashSet<Node>();
-		for(int x = 0; x < 1600; x += 300){
-			for(int y = 0; y < 1080; y+= 240){
+		for(int x = 0; x < 1600; x += 100){
+			for(int y = 0; y < 1080; y+= 80){
 				//create nodes in a 100x80 grid pattern
 				Node node = new Node(new Position(x, y));
 				nodes.add(node);
@@ -458,7 +453,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 		//create a list of all non-collectable objects
 		Set<AbstractObject> obstructions = new HashSet<AbstractObject>();
 		for(Ship s : space.getShips()){
-			obstructions.add(s);
+			if(!(s.getId().equals(myShip.getUUID()))){
+				obstructions.add(s);
+			}
 		}
 		for(Base b : space.getBases()){
 			obstructions.add(b);
@@ -470,7 +467,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 		
 		//create an adjacency list to store the graph
-		HashMap<Node, Set<Node>> graph = new HashMap<Node, Set<Node>>();
+		HashMap<Node, HashSet<Node>> graph = new HashMap<Node, HashSet<Node>>();
 		
 		//store the start and goal nodes
 		graph.put(start, new HashSet<Node>());
@@ -514,10 +511,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		frontier.add(start);
 		//intitialize a variable to store the current node being checked
 		Node currentNode = null;
-		
-		int nodesChecked = 0;
 		while(!routeCreated){
-			System.out.println(++nodesChecked);
 			//move the best node from the frontier to the currently being checked node
 			currentNode = frontier.poll();
 			//mark the current node as visited
@@ -535,7 +529,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 			
 			//add the child nodes to the frontier
 			for(Node nextNode : graph.get(currentNode)){
+				System.out.println("adding child");
 				if(nextNode.getVisited()){
+					System.out.println("child has been visited before me");
 					//skip the node if it's already been visited
 					continue;
 				} else if(nextNode == currentNode.getParent()){
@@ -544,11 +540,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 					System.out.println("I found my parent!");
 					continue;
 				} else {
+					System.out.println("storing child");
 					//Node hasn't been seen before.
 					//calc the node's g(n)
 					double currentPathCost = currentNode.getG() +
 							space.findShortestDistance(nextNode.getLoc(), goal.getLoc());
-					if(currentPathCost >= nextNode.getG()){
+					if(currentPathCost >= nextNode.getG() && nextNode.getG() != 0){
 						//We found an equal or better path elsewhere, move on
 						//If it's equal elsewhere, then including it would duplicate paths
 						continue;
@@ -565,6 +562,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 		
 		//create a stack to list the movements (LIFO)
+		System.out.println("storing route");
 		Stack<Node> route = new Stack<Node>();
 		while(currentNode.getParent() != null){
 			//push the current (last) node onto the stack
@@ -572,6 +570,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			//set the current node to the parent of the node that just entered the stack
 			currentNode = currentNode.getParent();
 		}
+		System.out.println("returning route");
 		//current node should equal start at this point, but start isn't needed on the stack.
 		return route;
 	}
