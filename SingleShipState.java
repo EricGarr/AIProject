@@ -15,6 +15,12 @@ public class SingleShipState {
 	//Storing just the UUID so that queries always return the correct values
 	Ship ship;
 	
+	public enum Target{
+		ENERGY,
+		BASE,
+		ASTEROID
+	}
+	
 	public SingleShipState(){
 		//default constructor, never use.
 		System.out.println("I should have never been called you fool.");
@@ -23,6 +29,16 @@ public class SingleShipState {
 	public SingleShipState(Ship s){
 		//Actual constructor
 		ship = s;
+	}
+	
+	public Target getState(){
+		if(getCurrentEnergy() < 2000){
+			return Target.ENERGY; 
+		} else if(getResources() > (ship.getMaxEnergy()/10)){
+			return Target.BASE;
+		} else {
+			return Target.ASTEROID;
+		}
 	}
 	
 	//Gets the team name from the game space
