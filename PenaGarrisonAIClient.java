@@ -453,11 +453,11 @@ public class PenaGarrisonAIClient extends TeamClient {
 		
 		//create a list of all non-collectable objects
 		Set<AbstractObject> obstructions = new HashSet<AbstractObject>();
-		for(Ship s : space.getShips()){
+		/*for(Ship s : space.getShips()){
 			if(!(s.getId().equals(myShip.getUUID()))){
 				obstructions.add(s);
 			}
-		}
+		}*/
 		for(Base b : space.getBases()){
 			if(!(b.getTeamName() == myShip.getTeamName()))
 			obstructions.add(b);
@@ -530,6 +530,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			
 			//add the child nodes to the frontier
 			for(Node nextNode : graph.get(currentNode)){
+				System.out.println("checking child");
 				if(nextNode.getVisited()){
 					//skip the node if it's already been visited
 					continue;
@@ -538,7 +539,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					//calc this path's g(n) for the node
 					double currentPathCost = currentNode.getG() +
 							space.findShortestDistance(nextNode.getLoc(), goal.getLoc());
-					if(currentPathCost >= nextNode.getG() && nextNode.getG() != 0){
+					if(currentPathCost >= nextNode.getG() || nextNode.getG() != 0){
 						/*
 						 * "nothing to see here, move along"
 						 * We found an equal or better path elsewhere
