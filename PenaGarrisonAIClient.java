@@ -539,7 +539,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					//calc this path's g(n) for the node
 					double currentPathCost = currentNode.getG() +
 							space.findShortestDistance(nextNode.getLoc(), goal.getLoc());
-					if(currentPathCost >= nextNode.getG() || nextNode.getG() != 0){
+					if(currentPathCost >= nextNode.getG() && nextNode.getG() != 0){
 						/*
 						 * "nothing to see here, move along"
 						 * We found an equal or better path elsewhere
