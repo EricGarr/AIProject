@@ -137,6 +137,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					aimingForBase.put(ship.getId(), false);
 				}
 				System.out.println("beginning A*");
+				//perform A* search to find the best path to the base
 				moves = makeGraph(ship.getPosition(), target.getPosition(), space);
 			}
 			if(!moves.isEmpty()){
@@ -458,6 +459,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			}
 		}
 		for(Base b : space.getBases()){
+			if(!(b.getTeamName() == myShip.getTeamName()))
 			obstructions.add(b);
 		}
 		for(Asteroid a : space.getAsteroids()){
@@ -469,15 +471,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 		//create an adjacency list to store the graph
 		HashMap<Node, HashSet<Node>> graph = new HashMap<Node, HashSet<Node>>();
 		
-		//store the start and goal nodes
+		//store the start node
 		graph.put(start, new HashSet<Node>());
-		graph.put(goal, new HashSet<Node>());
 		
 		//check if the start and goal nodes are close and free of obstructions
 		if((space.findShortestDistance(start.getLoc(), target) <= maxNodeView) &&
 				(space.isPathClearOfObstructions(start.getLoc(), target, obstructions, Ship.SHIP_RADIUS))){
+			//if so, add goal as a child of the start!
 			graph.get(start).add(goal);
-			graph.get(goal).add(start);
 		}
 		
 		//fill the graph with the rest of the nodes
@@ -496,8 +497,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 				if(space.findShortestDistance(curNode.getLoc(), nextNode.getLoc()) <= maxNodeView && 
 						space.isPathClearOfObstructions(curNode.getLoc(), nextNode.getLoc(),
 								obstructions, Ship.SHIP_RADIUS)){
+					//store the child nodes
 					graph.get(curNode).add(nextNode);
-					graph.get(nextNode).add(curNode);
 				}
 			}
 		}
@@ -529,25 +530,20 @@ public class PenaGarrisonAIClient extends TeamClient {
 			
 			//add the child nodes to the frontier
 			for(Node nextNode : graph.get(currentNode)){
-				System.out.println("adding child");
 				if(nextNode.getVisited()){
-					System.out.println("child has been visited before me");
 					//skip the node if it's already been visited
 					continue;
-				} else if(nextNode == currentNode.getParent()){
-					//no need to check the parent node.
-					//parent should have already been checked, but just in case
-					System.out.println("I found my parent!");
-					continue;
 				} else {
-					System.out.println("storing child");
-					//Node hasn't been seen before.
-					//calc the node's g(n)
+					//Node hasn't been expanded
+					//calc this path's g(n) for the node
 					double currentPathCost = currentNode.getG() +
 							space.findShortestDistance(nextNode.getLoc(), goal.getLoc());
 					if(currentPathCost >= nextNode.getG() && nextNode.getG() != 0){
-						//We found an equal or better path elsewhere, move on
-						//If it's equal elsewhere, then including it would duplicate paths
+						/*
+						 * "nothing to see here, move along"
+						 * We found an equal or better path elsewhere
+						 * If it's equal elsewhere, then including it would duplicate paths
+						*/
 						continue;
 					}
 					//set the path cost to the node
