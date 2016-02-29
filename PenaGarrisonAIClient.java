@@ -56,7 +56,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	//nodes of the graph
 	Set<Node> nodes;
 	//furthest distance a node and "see" another node
-	int maxNodeView = 130;
+	int maxNodeView = 400;
 	//stack of moves returned by A*
 	Stack<Node> moves;
 	//how often can A* be re-run
@@ -431,8 +431,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	private void makeNodes(){
 		//make a set of the nodes
 		nodes = new HashSet<Node>();
-		for(int x = 0; x < 1600; x += 100){
-			for(int y = 0; y < 1080; y+= 80){
+		for(int x = 0; x < 1600; x += 300){
+			for(int y = 0; y < 1080; y+= 240){
 				//create nodes in a 100x80 grid pattern
 				Node node = new Node(new Position(x, y));
 				nodes.add(node);
@@ -504,6 +504,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 				}
 			}
 		}
+		
+		System.out.println("creating route");
+		
 		boolean routeCreated = false;
 		//create the frontier
 		PriorityQueue<Node> frontier = new PriorityQueue<Node>();
@@ -511,7 +514,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 		frontier.add(start);
 		//intitialize a variable to store the current node being checked
 		Node currentNode = null;
+		
+		int nodesChecked = 0;
 		while(!routeCreated){
+			System.out.println(++nodesChecked);
 			//move the best node from the frontier to the currently being checked node
 			currentNode = frontier.poll();
 			//mark the current node as visited

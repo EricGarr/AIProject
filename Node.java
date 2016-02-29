@@ -54,6 +54,7 @@ public class Node implements Comparable<Node>{
 	//set the heuristic cost
 	public void setH(double val){
 		hOfN = val;
+		fOfN = hOfN + gOfN;
 	}
 
 	//set the path cost
