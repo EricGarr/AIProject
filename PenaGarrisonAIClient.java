@@ -1,8 +1,13 @@
 package garr9903;
 
+/*
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.XStreamException;
+import spacesettlers.actions.MoveToObjectAction;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+*/
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,14 +16,9 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
-/*
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.XStreamException;
-*/
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.MoveAction;
-//import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
@@ -99,58 +99,59 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @param ship
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
-			Ship ship) {
-		AbstractAction current = ship.getCurrentAction();
-		Position currentPosition = ship.getPosition();
-		AbstractAction newAction = current;
-		myShip = new SingleShipState(ship);
-		AbstractObject target;
-		//makeGraph(Position current, Position target, Toroidal2DPhysics space)
-		if(space.getCurrentTimestep() - lastRun >= REMAP){
-			// aim for a beacon if there isn't enough energy
-			if (myShip.getState() == SingleShipState.Target.ENERGY) {
-				target = getNearestBeacon(space, ship);
-				/*moves = makeGraph(ship.getPosition(), target.getPosition(), space);
-				newAction = calcMove(space, currentPosition, target.getPosition());
-				//aimingForBase.put(ship.getId(), false);
-				return newAction;*/
-			}
-	
-			// if the ship has enough resourcesAvailable, take it back to base
-			if (myShip.getState() == SingleShipState.Target.BASE || space.getCurrentTimestep() >= 19900) {
-				target = getNearestBase(space, ship);
-				//newAction = calcMove(space, currentPosition, base.getPosition());
-				//aimingForBase.put(ship.getId(), true);
-				//return newAction;
-			}
-	
-			// did we bounce off the base?
-			// && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())
-			if (ship.getResources().getTotal() == 0){
-				current = null;
-				//aimingForBase.put(ship.getId(), false);
-			}
-			
-			//if nothing else triggered, collect an asteroid
-			//aimingForBase.put(ship.getId(), false);
-			target = getBestAsteroid(space, ship);
-			
-			if (target == null || current == null) {
-				target = getBestAsteroid(space, ship);
-			}
-			if (target != null) {
-				targets.put(target.getId(), ship);
-				//newAction = calcMove(space, currentPosition, asteroid.getPosition());
-			}
-			
-			moves = makeGraph(ship.getPosition(), target.getPosition(), space);
-		}
-		newAction = calcMove(space, currentPosition, moves.pop().getLoc());
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship) {
+		try{
+			AbstractAction current = ship.getCurrentAction();
+			Position currentPosition = ship.getPosition();
+			AbstractAction newAction = current;
+			myShip = new SingleShipState(ship);
+			AbstractObject target;
+			//makeGraph(Position current, Position target, Toroidal2DPhysics space)
+			if(space.getCurrentTimestep() - lastRun >= REMAP){
+				// aim for a beacon if there isn't enough energy
+				if (myShip.getState() == SingleShipState.Target.ENERGY) {
+					target = getNearestBeacon(space, ship);
+					/*moves = makeGraph(ship.getPosition(), target.getPosition(), space);
+					newAction = calcMove(space, currentPosition, target.getPosition());
+					//aimingForBase.put(ship.getId(), false);
+					return newAction;*/
+				}
 		
-		if(newAction != null){
-			return newAction;
-		} else {
+				// if the ship has enough resourcesAvailable, take it back to base
+				if (myShip.getState() == SingleShipState.Target.BASE || space.getCurrentTimestep() >= 19900) {
+					target = getNearestBase(space, ship);
+					//newAction = calcMove(space, currentPosition, base.getPosition());
+					//aimingForBase.put(ship.getId(), true);
+					//return newAction;
+				}
+		
+				// did we bounce off the base?
+				// && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())
+				if (ship.getResources().getTotal() == 0){
+					current = null;
+					//aimingForBase.put(ship.getId(), false);
+				}
+				
+				//if nothing else triggered, collect an asteroid
+				//aimingForBase.put(ship.getId(), false);
+				target = getBestAsteroid(space, ship);
+				
+				if (target == null || current == null) {
+					target = getBestAsteroid(space, ship);
+					targets.put(target.getId(), ship);
+				}
+				moves = makeGraph(ship.getPosition(), target.getPosition(), space);
+			}
+			if(!moves.isEmpty()){
+				newAction = calcMove(space, currentPosition, moves.pop().getLoc());
+			}
+			
+			if(newAction != null){
+				return newAction;
+			} else {
+				return new DoNothingAction();
+			}
+		}catch (Exception e){
 			return new DoNothingAction();
 		}
 	}
@@ -283,6 +284,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
 		targets = new HashMap<UUID, Ship>();
+		makeNodes();
+		moves = new Stack<Node>();
 		//aimingForBase = new HashMap<UUID, Boolean>();
 		
 		/*XStream xstream = new XStream();
@@ -338,7 +341,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			PurchaseCosts purchaseCosts) {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		double BASE_BUYING_DISTANCE = 200;
+		double BASE_BUYING_DISTANCE = 200;  //minimum distance from other bases
 		boolean buyBase = true;
 		
 		//purchase an energy doubler if possible
@@ -365,6 +368,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					for (Base base : bases) {
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
 							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
+							//check that base is far enough from ALL other bases
 							if (distance < maxDistance) {
 								buyBase = false;
 							}
@@ -498,10 +502,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 				}
 			}
 		}
-		return searchGraph(start, goal, graph, space);
-	}
-	
-	private Stack<Node> searchGraph(Node start, Node goal, HashMap<Node, Set<Node>> graph, Toroidal2DPhysics space){
 		boolean routeCreated = false;
 		//create the frontier
 		PriorityQueue<Node> frontier = new PriorityQueue<Node>();
