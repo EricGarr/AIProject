@@ -108,6 +108,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			AbstractObject target;
 			//makeGraph(Position current, Position target, Toroidal2DPhysics space)
 			if(space.getCurrentTimestep() - lastRun >= REMAP){
+				lastRun = space.getCurrentTimestep();
 				// aim for a beacon if there isn't enough energy
 				if (myShip.getState() == SingleShipState.Target.ENERGY) {
 					target = getNearestBeacon(space, ship);
@@ -140,6 +141,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					target = getBestAsteroid(space, ship);
 					targets.put(target.getId(), ship);
 				}
+				System.out.println("beginning A*");
 				moves = makeGraph(ship.getPosition(), target.getPosition(), space);
 			}
 			if(!moves.isEmpty()){
