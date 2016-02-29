@@ -479,6 +479,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				(space.isPathClearOfObstructions(start.getLoc(), target, obstructions, Ship.SHIP_RADIUS))){
 			//if so, add goal as a child of the start!
 			graph.get(start).add(goal);
+			graph.get(goal).add(start);
 		}
 		
 		//fill the graph with the rest of the nodes
@@ -499,6 +500,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 								obstructions, Ship.SHIP_RADIUS)){
 					//store the child nodes
 					graph.get(curNode).add(nextNode);
+					graph.get(nextNode).add(curNode);
 				}
 			}
 		}
