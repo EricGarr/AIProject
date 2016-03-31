@@ -1,13 +1,13 @@
 package garr9903;
 
-/*
+
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
 import spacesettlers.actions.MoveToObjectAction;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-*/
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,25 +48,36 @@ import spacesettlers.utilities.Vector2D;
  */
 public class PenaGarrisonAIClient extends TeamClient {
 	//ship state tracker
-	SingleShipState myShip;
+	SingleShipState shipState;
 	//current targets
 	HashMap <UUID, Ship> targets;
-	HashMap <UUID, Boolean> aimingForBase;
+	HashMap <UUID, Boolean> aimingForBase;	
+	HashMap <UUID, Stack<Node>> movements;
 	
 	//nodes of the graph
 	Set<Node> nodes;
 	//furthest distance a node and "see" another node
-	int maxNodeView = 130;
+	int maxNodeView = 150;
 	//stack of moves returned by A*
 	Stack<Node> moves;
 	//how often can A* be re-run
 	private static int REMAP = 20;
 	//when was the last A* run?
 	private int lastRun = 0;
-	//buy ships before bases
-	boolean bought_ship = true;
-	//left over artifact
-	//Set<GridSquare> grid;
+	
+	double BASE_BUYING_DISTANCE = 0;	//minimum distance from other bases
+	boolean buyShip = false;			//determines if a ship can be bought
+	boolean buyBase = false;			//determines if a base can be bought 
+	
+	int speed = 0;						//max ship speed
+	int shipSight = 0;					//max ship sight
+	
+	//genes
+	int moveRate = 0;					//Ship speed.  0-4
+	int sightRadius = 0;				//Maximum distance from the ship that an asteroid can be for collection.  0-15
+	int newBaseDist = 0;				//Minimum distance for a new base from the old ones.  0-9
+	int equalShips = 0;					//Do we keep the number of bases equal to the number of ships? 0-1
+	int popMemberNum = -1;				//Which member of the population am I?
 	
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
@@ -84,7 +95,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-				myShip = new SingleShipState(ship);
+				shipState = new SingleShipState(ship);
 				AbstractAction action;
 				action = getAsteroidCollectorAction(space, ship);
 				actions.put(ship.getId(), action);
@@ -104,21 +115,20 @@ public class PenaGarrisonAIClient extends TeamClient {
 			AbstractAction current = ship.getCurrentAction();
 			Position currentPosition = ship.getPosition();
 			AbstractAction newAction = current;
-			myShip = new SingleShipState(ship);
 			AbstractObject target = null;
 			//makeGraph(Position current, Position target, Toroidal2DPhysics space)
-			if(space.getCurrentTimestep() - lastRun >= REMAP){
-				lastRun = space.getCurrentTimestep();
-				System.out.println(myShip.getState());
+			//if(space.getCurrentTimestep() - lastRun >= REMAP){
+				//lastRun = space.getCurrentTimestep();
+				//System.out.println(shipState.getState());
+				
 				// aim for a beacon if there isn't enough energy
-				if (myShip.getState() == SingleShipState.Target.ENERGY) {
+				if (ship.getEnergy() <= 2000) {
 					target = getNearestBeacon(space, ship);
 					aimingForBase.put(ship.getId(), false);
 				}
 				
 				// if the ship has enough resourcesAvailable or time is about up: take them back to base
-				//
-				if (myShip.getState() == SingleShipState.Target.BASE || space.getCurrentTimestep() >= 19900) {
+				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19900) {
 					//choose a base
 					target = getNearestBase(space, ship);
 					aimingForBase.put(ship.getId(), true);
@@ -132,17 +142,26 @@ public class PenaGarrisonAIClient extends TeamClient {
 				
 				//if nothing else is needed, get an asteroid
 				if (target == null || current == null) {
-					target = getBestAsteroid(space, ship);
+					target = getBestAsteroid(space, ship, shipSight);
 					targets.put(target.getId(), ship);
 					aimingForBase.put(ship.getId(), false);
 				}
-				System.out.println("beginning A*");
+				
+				//System.out.println("beginning A*");
 				//perform A* search to find the best path to the base
-				moves = makeGraph(ship.getPosition(), target.getPosition(), space);
-			}
-			if(!moves.isEmpty()){
-				newAction = calcMove(space, currentPosition, moves.pop().getLoc());
-			}
+				if(movements.containsKey(shipState.getUUID())){
+					movements.remove(shipState.getUUID());
+				}
+				//moves = makeGraph(ship.getPosition(), target.getPosition(), space);
+				//movements.put(shipState.getUUID(), moves);
+				newAction = calcMove(space, currentPosition, target.getPosition());
+			//}
+			/*
+			if(!movements.get(shipState.getUUID()).isEmpty()){
+				if(space.findShortestDistance(currentPosition, movements.get(shipState.getUUID()).peek().getLoc()) > 15){
+					newAction = calcMove(space, currentPosition, movements.get(shipState.getUUID()).pop().getLoc());
+				}
+			}*/
 			
 			if(newAction != null){
 				return newAction;
@@ -155,7 +174,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	//finds the asteroid with the best ratio of resources/distance
-	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship){
+	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship, int sight){
 		//get the list of asteroids
 		Set<Asteroid> asteroids = space.getAsteroids();
 		double test = Double.MIN_VALUE;
@@ -163,10 +182,20 @@ public class PenaGarrisonAIClient extends TeamClient {
 		Asteroid best = null;
 		for(Asteroid ast : asteroids){
 			//calculate the ratio of resources to distance for each asteriod
-			if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-				//if a better asteroid is found, store it, and it's ratio
-				best = ast;
-				test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+			if(sight == 0){
+				if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+					//if a better asteroid is found, store it, and it's ratio
+					best = ast;
+					test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+				}
+			} else {
+				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
+					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+						//if a better asteroid is found, store it, and it's ratio
+						best = ast;
+						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+					}
+				}
 			}
 		}
 		//return the best asteroid found
@@ -260,182 +289,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		return new MoveAction(space, current, target, vect);
 	}
 	
-	@Override
-	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
-		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
-
-		for (UUID asteroidId : targets.keySet()) {
-			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
-			if (asteroid == null || !asteroid.isAlive()) {
-				finishedAsteroids.add(asteroid);
-			}
-		}
-
-		for (Asteroid asteroid : finishedAsteroids) {
-			targets.remove(asteroid);
-		}
-	}
-	
-	/**
-	 * Demonstrates one way to read in knowledge from a file
-	 */
-	@Override
-	public void initialize(Toroidal2DPhysics space) {
-		targets = new HashMap<UUID, Ship>();
-		makeNodes();
-		moves = new Stack<Node>();
-		aimingForBase = new HashMap<UUID, Boolean>();
-		
-		/*XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
-		try { 
-			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
-		} catch (XStreamException e) {
-			// if you get an error, handle it other than a null pointer because
-			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
-		}*/
-	}
-
-	/**
-	 * Demonstrates saving out to the xstream file
-	 * You can save out other ways too.  This is a human-readable way to examine
-	 * the knowledge you have learned.
-	 * 
-	 * Not being used yet.
-	 */
-	@Override
-	public void shutDown(Toroidal2DPhysics space) {
-		/*XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
-
-		try { 
-			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));
-		} catch (XStreamException e) {
-			// if you get an error, handle it somehow as it means your knowledge didn't save
-			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			myKnowledge = new ExampleKnowledge();
-		}*/
-	}
-
-	@Override
-	public Set<SpacewarGraphics> getGraphics() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	/**
-	 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
-	 * far away from the existing bases
-	 */
-	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects, 
-			ResourcePile resourcesAvailable, 
-			PurchaseCosts purchaseCosts) {
-
-		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		double BASE_BUYING_DISTANCE = 200;  //minimum distance from other bases
-		boolean buyBase = true;
-		
-		//purchase an energy doubler if possible
-		if(purchaseCosts.canAfford(PurchaseTypes.POWERUP_DOUBLE_MAX_ENERGY, resourcesAvailable)){
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Ship) {
-					Ship ship = (Ship) actionableObject;
-					purchases.put(ship.getId(), PurchaseTypes.POWERUP_DOUBLE_MAX_ENERGY);
-					//give energy doubler to ship
-					ship.addPowerup(SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY);
-				}
-			}
-		}
-		
-		//purchase a new base
-		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && bought_ship) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Ship) {
-					Ship ship = (Ship) actionableObject;
-					Set<Base> bases = space.getBases();
-
-					// how far away is this ship to a base of my team?
-					double maxDistance = BASE_BUYING_DISTANCE;
-					for (Base base : bases) {
-						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
-							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
-							//check that base is far enough from ALL other bases
-							if (distance < maxDistance) {
-								buyBase = false;
-							}
-						}
-					}
-
-					if (buyBase) {
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						break;
-					} else {
-						buyBase = true;
-					}
-				}
-			}		
-		} 
-		
-		// Buy a ship if possible
-		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
-			bought_ship = true;
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Base) {
-					Base base = (Base) actionableObject;
-					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					break;
-				}
-
-			}
-
-		}
-
-		return purchases;
-	}
-
-	/**
-	 * @param space
-	 * @param actionableObjects
-	 * @return
-	 */
-	@Override
-	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
-		
-		//use double energy powerup if possible.
-		Ship ship = (Ship) space.getObjectById(myShip.getUUID());
-		
-		if(ship.getCurrentPowerups().contains(SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY)){
-			powerUps.put(ship.getId(), SpaceSettlersPowerupEnum.DOUBLE_MAX_ENERGY);
-		}
-		
-		return powerUps;
-	}
-	
-	/*
-	 * create nodes
-	 * Set<Node> nodes
-	 */
-	private void makeNodes(){
-		//make a set of the nodes
-		nodes = new HashSet<Node>();
-		for(int x = 0; x < 1600; x += 100){
-			for(int y = 0; y < 1080; y+= 80){
-				//create nodes in a 100x80 grid pattern
-				Node node = new Node(new Position(x, y));
-				nodes.add(node);
-			}
-		}
-	}
-	
 	/*
 	 * max node view = 130
 	 * value chosen because we are setting the nodes in a grid pattern where
@@ -451,15 +304,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 		Node goal = new Node(target);
 		goal.setH(0);
 		
+		//System.out.println("Creating obstructions");
 		//create a list of all non-collectable objects
 		Set<AbstractObject> obstructions = new HashSet<AbstractObject>();
-		/*for(Ship s : space.getShips()){
-			if(!(s.getId().equals(myShip.getUUID()))){
-				obstructions.add(s);
-			}
-		}*/
+		
 		for(Base b : space.getBases()){
-			if(!(b.getTeamName() == myShip.getTeamName()))
+			if(!(b.getTeamName() == shipState.getTeamName()))
 			obstructions.add(b);
 		}
 		for(Asteroid a : space.getAsteroids()){
@@ -468,11 +318,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 			}
 		}
 		
+		//System.out.println("creating graph");
+		
 		//create an adjacency list to store the graph
 		HashMap<Node, HashSet<Node>> graph = new HashMap<Node, HashSet<Node>>();
 		
 		//store the start node
 		graph.put(start, new HashSet<Node>());
+		graph.put(goal, new HashSet<Node>());
 		
 		//check if the start and goal nodes are close and free of obstructions
 		if((space.findShortestDistance(start.getLoc(), target) <= maxNodeView) &&
@@ -505,8 +358,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			}
 		}
 		
-		System.out.println("creating route");
-		
+		//System.out.println("creating route");
 		boolean routeCreated = false;
 		//create the frontier
 		PriorityQueue<Node> frontier = new PriorityQueue<Node>();
@@ -514,11 +366,16 @@ public class PenaGarrisonAIClient extends TeamClient {
 		frontier.add(start);
 		//intitialize a variable to store the current node being checked
 		Node currentNode = null;
+		/**/
+		int nodesChecked = 0;
+		/**/
 		while(!routeCreated){
+			//System.out.println(++nodesChecked);
+			
 			//move the best node from the frontier to the currently being checked node
 			currentNode = frontier.poll();
 			//mark the current node as visited
-			currentNode.setVisited();
+			currentNode.setVisited(true);
 			//check if the goal is the node
 			if(currentNode == goal){
 				routeCreated = true;
@@ -530,17 +387,22 @@ public class PenaGarrisonAIClient extends TeamClient {
 				break;
 			}
 			
+			//System.out.println(graph.get(currentNode).size());
 			//add the child nodes to the frontier
 			for(Node nextNode : graph.get(currentNode)){
-				System.out.println("checking child");
-				if(nextNode.getVisited()){
+				//System.out.println("checking child");
+				if(nextNode.getVisited() == true){
+					//System.out.println("child already seen");
 					//skip the node if it's already been visited
 					continue;
 				} else {
+					//System.out.println("comparing child");
 					//Node hasn't been expanded
 					//calc this path's g(n) for the node
 					double currentPathCost = currentNode.getG() +
 							space.findShortestDistance(nextNode.getLoc(), goal.getLoc());
+					/*System.out.println("current path: " + currentPathCost +
+							"current child path cost" + nextNode.getG());*/
 					if(currentPathCost >= nextNode.getG() && nextNode.getG() != 0){
 						/*
 						 * "nothing to see here, move along"
@@ -549,8 +411,11 @@ public class PenaGarrisonAIClient extends TeamClient {
 						*/
 						continue;
 					}
-					//set the path cost to the node
-					//this also sets the total estimated cost
+					//System.out.println("storing child");
+					/*
+					 * set the path cost to the node
+					 * this also sets the total estimated cost
+					 */
 					nextNode.setCost(currentPathCost);
 					//make sure the current Node is marked as a parent node
 					nextNode.setParent(currentNode);
@@ -561,7 +426,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 		
 		//create a stack to list the movements (LIFO)
-		System.out.println("storing route");
+		//System.out.println("storing route");
 		Stack<Node> route = new Stack<Node>();
 		while(currentNode.getParent() != null){
 			//push the current (last) node onto the stack
@@ -569,8 +434,237 @@ public class PenaGarrisonAIClient extends TeamClient {
 			//set the current node to the parent of the node that just entered the stack
 			currentNode = currentNode.getParent();
 		}
-		System.out.println("returning route");
+		//System.out.println("returning route");
 		//current node should equal start at this point, but start isn't needed on the stack.
 		return route;
+	}
+	
+	@Override
+	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
+		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
+
+		for (UUID asteroidId : targets.keySet()) {
+			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
+			if (asteroid == null || !asteroid.isAlive()) {
+				finishedAsteroids.add(asteroid);
+			}
+		}
+
+		for (Asteroid asteroid : finishedAsteroids) {
+			targets.remove(asteroid);
+		}
+	}
+	
+	/**
+	 * Demonstrates one way to read in knowledge from a file
+	 */
+	@Override
+	public void initialize(Toroidal2DPhysics space) {
+		targets = new HashMap<UUID, Ship>();
+		//makeNodes();
+		moves = new Stack<Node>();
+		aimingForBase = new HashMap<UUID, Boolean>();
+		movements = new HashMap <UUID, Stack<Node>>();
+		
+		XStream xstream = new XStream();
+		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+		try { 
+			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
+		} catch (XStreamException e) {
+			// if you get an error, handle it other than a null pointer because
+			// the error will happen the first time you run
+			myKnowledge = new ExampleKnowledge();
+		}
+		
+		/*
+		 * Figure out what member of the population to used
+		 * This method was suggested by Dr. McGovern
+		 * Works by creating empty dummy files in a folder and uses the 
+		 */
+		try{
+			String[] temp = new File("garr9903/Count").list();
+			popMemberNum = temp.length;
+		} catch(Exception e){
+			popMemberNum = 0;
+		}
+		try{
+			touch(new File("garr9903/Count/" + popMemberNum));
+		} catch(Exception e){
+			System.out.println("---------------");
+			System.out.println("I have no hands");
+			System.out.println("---------------");
+		}
+		
+		moveRate = 0;
+		sightRadius = 0;
+		newBaseDist = 3;
+		equalShips = 0;
+		
+		BASE_BUYING_DISTANCE = newBaseDist * 100;  //minimum distance from other bases
+		if(moveRate != 0){
+			speed = moveRate*10;
+		} else {
+			speed = 50;
+		}
+		if(sightRadius != 0){
+			shipSight = sightRadius * 100;
+		}
+	}
+	
+	public static void touch(File file){
+		try {
+			if (!file.exists()){
+				new FileOutputStream(file).close();
+			}
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+	}
+
+	/*
+	 * create nodes
+	 * Set<Node> nodes
+	 */
+	@SuppressWarnings("unused")
+	private void makeNodes(){
+		//make a set of the nodes
+		nodes = new HashSet<Node>();
+		for(int x = 0; x < 1600; x += 100){
+			for(int y = 0; y < 1080; y+= 80){
+				//create nodes in a 100x80 grid pattern
+				Node node = new Node(new Position(x, y));
+				nodes.add(node);
+			}
+		}
+	}
+
+	/**
+	 * Demonstrates saving out to the xstream file
+	 * You can save out other ways too.  This is a human-readable way to examine
+	 * the knowledge you have learned.
+	 * 
+	 * Not being used yet.
+	 */
+	@Override
+	public void shutDown(Toroidal2DPhysics space) {
+		XStream xstream = new XStream();
+		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+
+		try { 
+			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));
+		} catch (XStreamException e) {
+			// if you get an error, handle it somehow as it means your knowledge didn't save
+			// the error will happen the first time you run
+			myKnowledge = new ExampleKnowledge();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			myKnowledge = new ExampleKnowledge();
+		}
+	}
+
+	@Override
+	public Set<SpacewarGraphics> getGraphics() {/*
+		HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+		graphics.addAll(graphicsToAdd);
+		graphicsToAdd.clear();*/
+		return null;
+	}
+
+	@Override
+	/**
+	 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
+	 * far away from the existing bases
+	 */
+	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects, 
+			ResourcePile resourcesAvailable, 
+			PurchaseCosts purchaseCosts) {
+
+		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
+		
+		if(equalShips == 1){
+			int numBases = 0;
+			int numShips = 0;
+			for(Base base : space.getBases()){
+				if(base.getTeamName().equalsIgnoreCase(getTeamName())){
+					numBases++;
+				}
+			}
+			
+			for(Ship ship : space.getShips()){
+				if(ship.getTeamName().equalsIgnoreCase(getTeamName())){
+					numShips++;
+				}
+			}
+			
+			if(numBases < numShips){
+				buyBase = true;
+				buyShip = false;
+			} else {
+				buyBase = false;
+				buyShip = true;
+			}
+		} else {
+			buyBase = true;
+			buyShip = true;
+		}
+		
+		//purchase a new base
+		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable) && buyBase) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				if (actionableObject instanceof Ship) {
+					Ship ship = (Ship) actionableObject;
+					Set<Base> bases = space.getBases();
+
+					// how far away is this ship to a base of my team?
+					double maxDistance = BASE_BUYING_DISTANCE;
+					for (Base base : bases) {
+						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
+							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
+							//check that base is far enough from ALL other bases
+							if (distance < maxDistance) {
+								buyBase = false;
+							}
+						}
+					}
+
+					if (buyBase) {
+						purchases.put(ship.getId(), PurchaseTypes.BASE);
+						break;
+					} else {
+						buyBase = true;
+					}
+				}
+			}		
+		} 
+		
+		// Buy a ship if possible
+		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && buyShip) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				if (actionableObject instanceof Base) {
+					Base base = (Base) actionableObject;
+					purchases.put(base.getId(), PurchaseTypes.SHIP);
+					break;
+				}
+
+			}
+
+		}
+
+		return purchases;
+	}
+
+	/**
+	 * @param space
+	 * @param actionableObjects
+	 * @return
+	 */
+	@Override
+	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects) {
+		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
+		
+		return powerUps;
 	}
 }

@@ -32,6 +32,8 @@ public class SingleShipState {
 	}
 	
 	public Target getState(){
+		//System.out.println(getCurrentEnergy());
+		//System.out.println(getResources());
 		if(getCurrentEnergy() < 2000){
 			return Target.ENERGY; 
 		} else if(getResources() > (ship.getMaxEnergy()/10)){

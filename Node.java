@@ -20,6 +20,7 @@ public class Node implements Comparable<Node>{
 		hOfN = 0;
 		gOfN = 0;
 		fOfN = 0;
+		visited = false;
 	}
 	
 	//return the heuristic value
@@ -68,8 +69,8 @@ public class Node implements Comparable<Node>{
 		parent = par;
 	}
 	
-	public void setVisited(){
-		visited = true;
+	public void setVisited(boolean val){
+		visited = val;
 	}
 	
 	//reset the current node
