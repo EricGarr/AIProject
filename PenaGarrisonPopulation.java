@@ -1,9 +1,12 @@
 package garr9903;
 
+import java.util.Random;
+
 public class PenaGarrisonPopulation {
 	private PopulationInstance[] population;
-	private int[] fitnessScores;
+	private double[] fitnessScores;
 	private int populationSize;
+	private int currentPopMember;
 
 	public PenaGarrisonPopulation(int popSize) {
 		populationSize = popSize;
@@ -15,20 +18,19 @@ public class PenaGarrisonPopulation {
 		}
 		
 		// make space for the fitness scores
-		fitnessScores = new int[populationSize];
+		fitnessScores = new double[populationSize];
 	}
 
 	public PenaGarrisonPopulation() {
-		populationSize = 18;
+		populationSize = 100;
 		// make an empty population
 		population = new PopulationInstance[populationSize];
-		///generate new members of population.
 		for (int i = 0; i < populationSize; i++) {
 			population[i] = new PopulationInstance();
 		}
 		
 		// make space for the fitness scores
-		fitnessScores = new int[populationSize];
+		fitnessScores = new double[populationSize];
 	}
 
 	public PopulationInstance getPopulationInstance(int index) {
@@ -40,8 +42,19 @@ public class PenaGarrisonPopulation {
 	 * 
 	 * @param space
 	 */
-	public void storeFitness(int currentPopulationCounter, int score) {
+	public void storeFitness(int currentPopulationCounter, double score) {
 		fitnessScores[currentPopulationCounter] = score;
 	}
 	
+	public void add(int index, PopulationInstance p){
+		population[index] = p;
+	}
+	
+	public int getCurrentPopMember(){
+		return currentPopMember;
+	}
+	
+	public void incrementCurrentPopMember(){
+		currentPopMember++;
+	}
 }

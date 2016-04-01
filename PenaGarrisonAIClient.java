@@ -3,23 +3,14 @@ package garr9903;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
-import spacesettlers.actions.MoveToObjectAction;
-
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Random;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
@@ -64,13 +55,15 @@ public class PenaGarrisonAIClient extends TeamClient {
 	
 	//nodes of the graph
 	Set<Node> nodes;
-	//furthest distance a node and "see" another node
+	//farthest distance a node and "see" another node
 	int maxNodeView = 150;
 	//stack of moves returned by A*
 	Stack<Node> moves;
 	//how often can A* be re-run
+	@SuppressWarnings("unused")
 	private static int REMAP = 20;
 	//when was the last A* run?
+	@SuppressWarnings("unused")
 	private int lastRun = 0;
 	
 	double BASE_BUYING_DISTANCE = 0;	//minimum distance from other bases
@@ -475,22 +468,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		aimingForBase = new HashMap<UUID, Boolean>();
 		movements = new HashMap <UUID, Stack<Node>>();
 		
-		Random rand = new Random();
-		moveRate = rand.nextInt(5);
-		sightRadius = rand.nextInt(16);
-		newBaseDist = rand.nextInt(10);
-		equalShips = rand.nextInt(1);
-		
-		String knowledge = "";
-		try {
-			knowledge = new Scanner(new File(getKnowledgeFile())).useDelimiter("\\Z").next(); 
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			System.out.println(e);
-		}
-		//String[] population = knowledge.split("\\r?\\n");
-		
-		
 		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		try { 
@@ -500,6 +477,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// the error will happen the first time you run
 			population = new PenaGarrisonPopulation();
 		}
+		
+		moveRate = population.getPopulationInstance(population.getCurrentPopMember()).getMoveRate();
+		sightRadius = population.getPopulationInstance(population.getCurrentPopMember()).getSightRadius();
+		newBaseDist = population.getPopulationInstance(population.getCurrentPopMember()).getNewBaseDist();
+		equalShips = population.getPopulationInstance(population.getCurrentPopMember()).getEqualShips();
+		
 		
 		/*
 		 * Figure out what member of the population to used
@@ -574,12 +557,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
-		double score = 0;
 		for(ImmutableTeamInfo t : space.getTeamInfo()){
 			if(t.getTeamName().equalsIgnoreCase(getTeamName())){
-				score = t.getScore();
+				population.storeFitness(population.getCurrentPopMember(), t.getScore());
 			}
 		}
+		/*
 		String output = String.format("%s,%s,%s,%s,%s", moveRate, sightRadius, newBaseDist, equalShips, score);
 		try{
 			File file = new File(getKnowledgeFile());
@@ -588,10 +571,12 @@ public class PenaGarrisonAIClient extends TeamClient {
 			fileOut.close();
 		}catch(Exception e){
 			System.out.println("I learned NOTHING!!!!!!!!");
-		}
-		/*XStream xstream = new XStream();
+		}*/
+		
+		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
-
+		
+		population.incrementCurrentPopMember();
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
 			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
@@ -602,7 +587,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			population = new PenaGarrisonPopulation();
-		}*/
+		}
 	}
 
 	@Override
