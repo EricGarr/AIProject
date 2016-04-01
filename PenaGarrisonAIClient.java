@@ -4,15 +4,22 @@ package garr9903;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
 import spacesettlers.actions.MoveToObjectAction;
+
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
@@ -22,6 +29,7 @@ import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
+import spacesettlers.clients.ImmutableTeamInfo;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
@@ -79,6 +87,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	int equalShips = 0;					//Do we keep the number of bases equal to the number of ships? 0-1
 	int popMemberNum = -1;				//Which member of the population am I?
 	
+	PenaGarrisonPopulation population;
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
@@ -466,14 +475,30 @@ public class PenaGarrisonAIClient extends TeamClient {
 		aimingForBase = new HashMap<UUID, Boolean>();
 		movements = new HashMap <UUID, Stack<Node>>();
 		
+		Random rand = new Random();
+		moveRate = rand.nextInt(5);
+		sightRadius = rand.nextInt(16);
+		newBaseDist = rand.nextInt(10);
+		equalShips = rand.nextInt(1);
+		
+		String knowledge = "";
+		try {
+			knowledge = new Scanner(new File(getKnowledgeFile())).useDelimiter("\\Z").next(); 
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			System.out.println(e);
+		}
+		//String[] population = knowledge.split("\\r?\\n");
+		
+		
 		XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		try { 
-			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
+			population = (PenaGarrisonPopulation) xstream.fromXML(new File(getKnowledgeFile()));
 		} catch (XStreamException e) {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
+			population = new PenaGarrisonPopulation();
 		}
 		
 		/*
@@ -481,6 +506,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		 * This method was suggested by Dr. McGovern
 		 * Works by creating empty dummy files in a folder and uses the 
 		 */
+		/*
 		try{
 			String[] temp = new File("garr9903/Count").list();
 			popMemberNum = temp.length;
@@ -491,13 +517,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 			touch(new File("garr9903/Count/" + popMemberNum));
 		} catch(Exception e){
 			System.out.println("---------------");
-			System.out.println("I have no hands");
+			System.out.println("I have no hands!");
 			System.out.println("---------------");
 		}
 		
-		moveRate = 0;
-		sightRadius = 0;
-		newBaseDist = 3;
+		moveRate = population.getPopulationInstance(popMemberNum).getMoveRate();
+		sightRadius = population.getPopulationInstance(popMemberNum).getSightRadius();
+		newBaseDist = population.getPopulationInstance(popMemberNum).getNewBaseDist();
 		equalShips = 0;
 		
 		BASE_BUYING_DISTANCE = newBaseDist * 100;  //minimum distance from other bases
@@ -509,6 +535,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		if(sightRadius != 0){
 			shipSight = sightRadius * 100;
 		}
+		*/
 	}
 	
 	public static void touch(File file){
@@ -547,20 +574,35 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
-		XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+		double score = 0;
+		for(ImmutableTeamInfo t : space.getTeamInfo()){
+			if(t.getTeamName().equalsIgnoreCase(getTeamName())){
+				score = t.getScore();
+			}
+		}
+		String output = String.format("%s,%s,%s,%s,%s", moveRate, sightRadius, newBaseDist, equalShips, score);
+		try{
+			File file = new File(getKnowledgeFile());
+			PrintWriter fileOut = new PrintWriter(new BufferedWriter(new FileWriter(file,true)));
+			fileOut.println(output);
+			fileOut.close();
+		}catch(Exception e){
+			System.out.println("I learned NOTHING!!!!!!!!");
+		}
+		/*XStream xstream = new XStream();
+		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));
+			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
 		} catch (XStreamException e) {
 			// if you get an error, handle it somehow as it means your knowledge didn't save
 			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
+			population = new PenaGarrisonPopulation();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
-			myKnowledge = new ExampleKnowledge();
-		}
+			population = new PenaGarrisonPopulation();
+		}*/
 	}
 
 	@Override
@@ -606,7 +648,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 				buyShip = true;
 			}
 		} else {
-			buyBase = true;
 			buyShip = true;
 		}
 		
@@ -632,8 +673,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 					if (buyBase) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
 						break;
-					} else {
-						buyBase = true;
 					}
 				}
 			}		
@@ -645,6 +684,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
+					buyBase = true;
 					break;
 				}
 

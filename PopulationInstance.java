@@ -4,9 +4,19 @@ public class PopulationInstance {
 	int moveRate, sightRadius, newBaseDist, equalShips;
 
 	public PopulationInstance() {
-		
+		moveRate = 0;
+		sightRadius = 0;
+		newBaseDist = 2;
+		equalShips = 1;
 	}
 
+	public PopulationInstance(int move, int sight, int base, int ships) {
+		moveRate = move;
+		sightRadius = sight;
+		newBaseDist = base;
+		equalShips = ships;
+	}
+	
 	public int getMoveRate() {
 		return moveRate;
 	}
