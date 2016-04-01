@@ -3,9 +3,13 @@ package garr9903;
 import java.util.Random;
 
 public class PenaGarrisonPopulation {
+	//stores chromosomes for instance of population
 	private PopulationInstance[] population;
+	//stores fitness scores for population member
 	private double[] fitnessScores;
+	//stores the total size of the population 
 	private int populationSize;
+	//stores the current population to be checked
 	private int currentPopMember;
 
 	public PenaGarrisonPopulation(int popSize) {
@@ -19,10 +23,11 @@ public class PenaGarrisonPopulation {
 		
 		// make space for the fitness scores
 		fitnessScores = new double[populationSize];
+		currentPopMember = 0;
 	}
 
 	public PenaGarrisonPopulation() {
-		populationSize = 100;
+		populationSize = 30;
 		// make an empty population
 		population = new PopulationInstance[populationSize];
 		for (int i = 0; i < populationSize; i++) {
@@ -31,6 +36,7 @@ public class PenaGarrisonPopulation {
 		
 		// make space for the fitness scores
 		fitnessScores = new double[populationSize];
+		currentPopMember = 0;
 	}
 
 	public PopulationInstance getPopulationInstance(int index) {
@@ -56,5 +62,17 @@ public class PenaGarrisonPopulation {
 	
 	public void incrementCurrentPopMember(){
 		currentPopMember++;
+	}
+	
+	public int getPopSize(){
+		return populationSize;
+	}
+	
+	public double[] getFitness(){
+		return fitnessScores;
+	}
+	
+	public PopulationInstance[] getPop(){
+		return population;
 	}
 }

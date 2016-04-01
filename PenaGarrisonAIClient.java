@@ -468,6 +468,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 		aimingForBase = new HashMap<UUID, Boolean>();
 		movements = new HashMap <UUID, Stack<Node>>();
 		
+		population = new PenaGarrisonPopulation();
+		
+		/*
 		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		try { 
@@ -476,7 +479,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			population = new PenaGarrisonPopulation();
-		}
+		}*/
 		
 		moveRate = population.getPopulationInstance(population.getCurrentPopMember()).getMoveRate();
 		sightRadius = population.getPopulationInstance(population.getCurrentPopMember()).getSightRadius();
