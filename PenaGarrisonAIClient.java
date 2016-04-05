@@ -468,9 +468,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 		aimingForBase = new HashMap<UUID, Boolean>();
 		movements = new HashMap <UUID, Stack<Node>>();
 		
-		population = new PenaGarrisonPopulation();
+		/* used to seed the initial population file
+		 * after seeding, comment out and run ladder
+		 * 29 times to get results for initial population
+		 */
+		//population = new PenaGarrisonPopulation();
 		
-		/*
+		///* The following block should be commented for the first run through the ladder
 		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		try { 
@@ -479,49 +483,20 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			population = new PenaGarrisonPopulation();
-		}*/
+		}
+		/* end section*/
 		
+		//uncomment for ladder
+		/*population.setCurrentPopMember(0);/**/
+		
+		//get the move rate from the current population member
 		moveRate = population.getPopulationInstance(population.getCurrentPopMember()).getMoveRate();
+		//get the max sight around the ships from the current population member 
 		sightRadius = population.getPopulationInstance(population.getCurrentPopMember()).getSightRadius();
+		//get the minimum distance for a new base from the current population member
 		newBaseDist = population.getPopulationInstance(population.getCurrentPopMember()).getNewBaseDist();
+		//with the ships and bases be approx. equal for this population member
 		equalShips = population.getPopulationInstance(population.getCurrentPopMember()).getEqualShips();
-		
-		
-		/*
-		 * Figure out what member of the population to used
-		 * This method was suggested by Dr. McGovern
-		 * Works by creating empty dummy files in a folder and uses the 
-		 */
-		/*
-		try{
-			String[] temp = new File("garr9903/Count").list();
-			popMemberNum = temp.length;
-		} catch(Exception e){
-			popMemberNum = 0;
-		}
-		try{
-			touch(new File("garr9903/Count/" + popMemberNum));
-		} catch(Exception e){
-			System.out.println("---------------");
-			System.out.println("I have no hands!");
-			System.out.println("---------------");
-		}
-		
-		moveRate = population.getPopulationInstance(popMemberNum).getMoveRate();
-		sightRadius = population.getPopulationInstance(popMemberNum).getSightRadius();
-		newBaseDist = population.getPopulationInstance(popMemberNum).getNewBaseDist();
-		equalShips = 0;
-		
-		BASE_BUYING_DISTANCE = newBaseDist * 100;  //minimum distance from other bases
-		if(moveRate != 0){
-			speed = moveRate*10;
-		} else {
-			speed = 50;
-		}
-		if(sightRadius != 0){
-			shipSight = sightRadius * 100;
-		}
-		*/
 	}
 	
 	public static void touch(File file){
@@ -565,21 +540,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 				population.storeFitness(population.getCurrentPopMember(), t.getScore());
 			}
 		}
-		/*
-		String output = String.format("%s,%s,%s,%s,%s", moveRate, sightRadius, newBaseDist, equalShips, score);
-		try{
-			File file = new File(getKnowledgeFile());
-			PrintWriter fileOut = new PrintWriter(new BufferedWriter(new FileWriter(file,true)));
-			fileOut.println(output);
-			fileOut.close();
-		}catch(Exception e){
-			System.out.println("I learned NOTHING!!!!!!!!");
-		}*/
-		
+				
 		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		
+		///*following section needed for learning.  Should not be enabled in ladder
 		population.incrementCurrentPopMember();
+
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
 			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
@@ -591,6 +558,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			// TODO Auto-generated catch block
 			population = new PenaGarrisonPopulation();
 		}
+		/*end section*/
 	}
 
 	@Override

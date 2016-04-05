@@ -1,6 +1,8 @@
 package garr9903;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -17,38 +19,147 @@ public class Learner{
 		//initial generation
 		int generationNum = 0;
 		
-		for(int i = 0; i < 15; i++){
+		/*File file = new File("src/garr9903/PenaGarrisonPopulation.xml");
+		System.out.println(file.getAbsolutePath());
+		*/
+		for(int i = 0; i < 10; i++){
 			//read current generation
 			XStream xstream = new XStream();
 			xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
-			try { 
-				population.add((PenaGarrisonPopulation) xstream.fromXML(new File("PenaGarrisonPopulation.xml")));
+			PenaGarrisonPopulation oldPop = null;
+			try {
+				File file = new File("src/garr9903/PenaGarrisonPopulation.xml");
+				System.out.println(file.getAbsolutePath());
+				oldPop = (PenaGarrisonPopulation) xstream.fromXML(file);
 			} catch (XStreamException e) {
-				// if you get an error, handle it other than a null pointer because
+				// if you get an error, handle it somehow as it means your knowledge didn't save
 				// the error will happen the first time you run
-				population.add(new PenaGarrisonPopulation());
+				System.out.println("Error in learning while importing old population (xstream)");
 			}
+			//store the current generation
+			population.add(oldPop);
 			
+			//get the average score for the generation
 			double sum = 0;
-			for(double score : population.get(generationNum).getFitness()){
-				sum+=score;
+			double[] fitness = population.get(generationNum).getFitness();
+			for(int j = 0; j < population.get(generationNum).getPopSize(); j++){
+				//sum the scores
+				sum += fitness[i];
 			}
+			//calculate the average score
 			sum = sum/population.get(generationNum).getPopSize();
+			System.out.println("The current generation is: " + generationNum + "\n" +
+					"and its score is : " + sum);
 			
+			//store the score for the generation
 			Generation generation = new Generation(sum, generationNum);
 			generations.add(generation);
 			
-			generateNewPop(population.get(generationNum));
+			//sort the old generation
+			//quickSort(0, population.get(generationNum).getPopSize()-1, population.get(generationNum));
+			//create new population
+			PenaGarrisonPopulation newPop = generateNewPop(population.get(generationNum));
 			
+			//store the new population
+			try { 
+				// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+				xstream.toXML(newPop, new FileOutputStream(new File("src/garr9903/PenaGarrisonPopulation.xml")));
+			} catch (XStreamException e) {
+				// if you get an error, handle it somehow as it means your knowledge didn't save
+				// the error will happen the first time you run
+				System.out.println("Error in learning while exporting new population (xstream)");
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				System.out.println("Error in learning while exporting new population (IO)");
+			}
+			
+			//Run New Population
+			try{
+				Runtime rt = Runtime.getRuntime();
+				String[] command = {"ant", "coopLadder"};
+				Process runGeneration = rt.exec(command);
+				runGeneration.waitFor();
+			}catch(Exception e){
+				System.out.println(e);
+			}
+			//increment generation
 			generationNum++;
+		}
+		//get last generation
+		PenaGarrisonPopulation finalPop = population.get(generationNum-1);
+		//sort last generation (DECENDING order)
+		//quickSort(0,finalPop.getPopSize()-1,finalPop);
+		//best population member should be the first one
+		finalPop.setCurrentPopMember(0);
+		//store the final population;
+		XStream xstream = new XStream();
+		xstream.alias("Population", PenaGarrisonPopulation.class);
+		xstream.alias("Generation", Generation.class);
+		try{
+			xstream.toXML(generations, new FileOutputStream(new File("src/garr9903/PenaGarrisonPopulation.xml")));
+		} catch (XStreamException e){
+			System.out.println(e);
+		} catch (FileNotFoundException e){
+			System.out.println(e);
+		}
+
+		//store the learning results
+		try { 
+			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+			xstream.toXML(generations, new FileOutputStream(new File("src/garr9903/GenerationKnowledge.xml"),true));
+			xstream.toXML(population, new FileOutputStream(new File("src/garr9903/GenerationKnowledge.xml"),true));
+		} catch (XStreamException e){
+			System.out.println(e);
+		} catch (FileNotFoundException e){
+			System.out.println(e);
 		}
 	}
 
-	private static void generateNewPop(PenaGarrisonPopulation pop){
-		//sort fitness array by quicksort
-		//modify order of population instance array simultaneously
-		double[] fitness = pop.getFitness();
+	private static void quickSort(int lowerBound, int upperBound, PenaGarrisonPopulation finalPop) {
+		//sorts into DECENDING order
+		int i = lowerBound;
+		System.out.println("i:" + i + " value:" + finalPop.getFitness()[i]);
+        int j = upperBound;
+        System.out.println("j:" + j + " value:" + finalPop.getFitness()[j]);
+        // calculate pivot number
+        double pivot = finalPop.getFitness()[(i+j)/2];
+        System.out.println("pivot:" + pivot);
+        // Divide into two arrays
+        while(i <= j) {
+        	//find the first member less than pivot on "left"
+            while(finalPop.getFitness()[i] > pivot) {
+                i++;
+            }
+            //find the first member greater than pivot on the "right"
+            while(finalPop.getFitness()[j] < pivot) {
+                j--;
+            }
+            if (i <= j) {
+            	//swap the population members and their scores
+            	double temp = finalPop.getFitness()[j];
+            	PopulationInstance tempPop = finalPop.getPop()[j];
+            	finalPop.getFitness()[j] = finalPop.getFitness()[i];
+            	finalPop.getPop()[j] = finalPop.getPop()[i];
+            	finalPop.getFitness()[i] = temp;
+            	finalPop.getPop()[i] = tempPop;
+                //move index to next position on both sides
+                i++;
+                j--;
+            }
+        }
+        //call quickSort() method recursively
+        //not sure why, but this line never worked...
+        //somehow it would start trying to sort with lowerBound = 0, j = -1
+        if (lowerBound < j)
+        	System.out.println("lower sorting");
+            quickSort(lowerBound, j, finalPop);
+        if (i < upperBound)
+        	System.out.println("upper sorting");
+            quickSort(i, upperBound, finalPop);
 		
+	}
+
+	private static PenaGarrisonPopulation generateNewPop(PenaGarrisonPopulation pop){
 		PenaGarrisonPopulation newPop = new PenaGarrisonPopulation(pop.getPopSize()); 
 		
 		//tournament size 5
@@ -62,6 +173,8 @@ public class Learner{
 			newPop.add(i, children[1]);
 			newPop.storeFitness(i++, 0);
 		}
+		
+		return newPop;
 	}
 
 	private static PopulationInstance[] crossover(PopulationInstance parent1, PopulationInstance parent2) {
@@ -92,6 +205,7 @@ public class Learner{
 		//mutate
 		if(rand.nextDouble() < .001){
 			int mutate = rand.nextInt(4);
+			System.out.println("Child1 mutating gene: " + mutate);
 			switch(mutate){
 				case 1:
 					child1.setMoveRate(rand.nextInt(5));
@@ -113,6 +227,7 @@ public class Learner{
 		}
 		if(rand.nextDouble() < .001){
 			int mutate = rand.nextInt(4);
+			System.out.println("Child2 mutating gene: " + mutate);
 			switch(mutate){
 				case 1:
 					child2.setMoveRate(rand.nextInt(5));
@@ -138,17 +253,19 @@ public class Learner{
 	}
 
 	private static PopulationInstance tournament(int size, PenaGarrisonPopulation pop){
-		Random rand = new Random();
+		 Random rand = new Random();
 		ArrayList<PopulationInstance> contestants = new ArrayList<PopulationInstance>();
 		ArrayList<Double> scores = new ArrayList<Double>();
 		ArrayList<Integer> selections = new ArrayList<Integer>();
 		int i = 0;
+		System.out.println("selecting potential parents");
 		while(i < size){
 			int j = rand.nextInt(pop.getPopSize());
 			if(!(selections.contains(j))){
 				selections.add(j);
 				contestants.add(pop.getPopulationInstance(j));
 				scores.add(pop.getFitness()[j]);
+				System.out.println("Candidate " + i + ": " + pop.getFitness()[j]);
 				i++;
 			}
 		}
@@ -161,6 +278,7 @@ public class Learner{
 				bestScore = d;
 			}
 		}
+		System.out.println("Chose candidate:" + scores.indexOf(bestScore));
 		return bestMem;
 	}
 
