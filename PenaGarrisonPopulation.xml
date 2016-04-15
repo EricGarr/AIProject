@@ -1,212 +1,212 @@
 <PenaGarrisonPopulation>
   <population>
     <garr9903.PopulationInstance>
-      <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>12</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
-    </garr9903.PopulationInstance>
-    <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
-      <moveRate>3</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>12</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>8</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
-      <sightRadius>15</sightRadius>
-      <newBaseDist>2</newBaseDist>
-      <equalShips>0</equalShips>
+      <sightRadius>12</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>1</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
+    </garr9903.PopulationInstance>
+    <garr9903.PopulationInstance>
+      <moveRate>4</moveRate>
+      <sightRadius>11</sightRadius>
+      <newBaseDist>3</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
   </population>
   <fitnessScores>
-    <double>226646.0</double>
-    <double>277226.0</double>
-    <double>363816.0</double>
-    <double>265933.0</double>
-    <double>244704.0</double>
-    <double>295119.0</double>
-    <double>313185.0</double>
-    <double>385232.0</double>
-    <double>310088.0</double>
-    <double>666834.0</double>
-    <double>254626.0</double>
-    <double>307121.0</double>
-    <double>257383.0</double>
-    <double>343574.0</double>
-    <double>399231.0</double>
-    <double>319389.0</double>
-    <double>517745.0</double>
-    <double>626903.0</double>
-    <double>240116.0</double>
-    <double>706289.0</double>
-    <double>326312.0</double>
-    <double>269819.0</double>
-    <double>319832.0</double>
-    <double>447290.0</double>
-    <double>342376.0</double>
+    <double>232283.33333333334</double>
+    <double>204951.33333333334</double>
+    <double>242498.33333333334</double>
+    <double>204438.0</double>
+    <double>235149.33333333334</double>
+    <double>213082.33333333334</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
+    <double>0.0</double>
     <double>0.0</double>
     <double>0.0</double>
     <double>0.0</double>
@@ -214,5 +214,6 @@
     <double>0.0</double>
   </fitnessScores>
   <populationSize>30</populationSize>
-  <currentPopMember>25</currentPopMember>
+  <currentPopMember>6</currentPopMember>
+  <games>0</games>
 </PenaGarrisonPopulation>

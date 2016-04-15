@@ -21,15 +21,15 @@ public class Learner{
 		
 		/*File file = new File("src/garr9903/PenaGarrisonPopulation.xml");
 		System.out.println(file.getAbsolutePath());
-		*/
-		for(int i = 0; i < 10; i++){
+		/**/
+		
+		for(int i = 0; i < 20; i++){
 			//read current generation
 			XStream xstream = new XStream();
 			xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 			PenaGarrisonPopulation oldPop = null;
 			try {
 				File file = new File("src/garr9903/PenaGarrisonPopulation.xml");
-				System.out.println(file.getAbsolutePath());
 				oldPop = (PenaGarrisonPopulation) xstream.fromXML(file);
 			} catch (XStreamException e) {
 				// if you get an error, handle it somehow as it means your knowledge didn't save
@@ -57,8 +57,13 @@ public class Learner{
 			
 			//sort the old generation
 			//quickSort(0, population.get(generationNum).getPopSize()-1, population.get(generationNum));
+			
+			//increment generation
+			generationNum++;
+			
 			//create new population
-			PenaGarrisonPopulation newPop = generateNewPop(population.get(generationNum));
+			System.out.println("Making generation: " + generationNum);
+			PenaGarrisonPopulation newPop = generateNewPop(population.get(generationNum-1), generationNum);
 			
 			//store the new population
 			try { 
@@ -72,7 +77,7 @@ public class Learner{
 				// TODO Auto-generated catch block
 				System.out.println("Error in learning while exporting new population (IO)");
 			}
-			
+			System.out.println("Testing new generation");
 			//Run New Population
 			try{
 				Runtime rt = Runtime.getRuntime();
@@ -82,11 +87,10 @@ public class Learner{
 			}catch(Exception e){
 				System.out.println(e);
 			}
-			//increment generation
-			generationNum++;
+			System.out.println("Generation done");
 		}
 		//get last generation
-		PenaGarrisonPopulation finalPop = population.get(generationNum-1);
+		PenaGarrisonPopulation finalPop = population.get(population.size()-1);
 		//sort last generation (DECENDING order)
 		//quickSort(0,finalPop.getPopSize()-1,finalPop);
 		//best population member should be the first one
@@ -96,7 +100,7 @@ public class Learner{
 		xstream.alias("Population", PenaGarrisonPopulation.class);
 		xstream.alias("Generation", Generation.class);
 		try{
-			xstream.toXML(generations, new FileOutputStream(new File("src/garr9903/PenaGarrisonPopulation.xml")));
+			xstream.toXML(population.get(generationNum-1), new FileOutputStream(new File("src/garr9903/PenaGarrisonPopulation.xml")));
 		} catch (XStreamException e){
 			System.out.println(e);
 		} catch (FileNotFoundException e){
@@ -159,15 +163,19 @@ public class Learner{
 		
 	}
 
-	private static PenaGarrisonPopulation generateNewPop(PenaGarrisonPopulation pop){
+	private static PenaGarrisonPopulation generateNewPop(PenaGarrisonPopulation pop, int gNum){
 		PenaGarrisonPopulation newPop = new PenaGarrisonPopulation(pop.getPopSize()); 
 		
 		//tournament size 5
 		int i = 0;
 		while(i < newPop.getPopSize()){
-			PopulationInstance parent1 = tournament(5, pop);
-			PopulationInstance parent2 = tournament(5, pop);
-			PopulationInstance[] children = crossover(parent1, parent2);
+			//select parent 1
+			PopulationInstance parent1 = tournament(10, pop);
+			//select parent 2
+			PopulationInstance parent2 = tournament(10, pop);
+			//create 2 children from parents
+			PopulationInstance[] children = crossover(parent1, parent2, gNum);
+			//store the children
 			newPop.add(i, children[0]);
 			newPop.storeFitness(i++, 0);
 			newPop.add(i, children[1]);
@@ -177,24 +185,25 @@ public class Learner{
 		return newPop;
 	}
 
-	private static PopulationInstance[] crossover(PopulationInstance parent1, PopulationInstance parent2) {
+	private static PopulationInstance[] crossover(PopulationInstance parent1, PopulationInstance parent2, int gNum) {
 		PopulationInstance[] children = new PopulationInstance[2];
 		PopulationInstance child1 = null;
 		PopulationInstance child2 = null;
 		Random rand = new Random();
+		//get crossover point between 1 and 4
 		int crossPoint = rand.nextInt(3)+1;
 		switch(crossPoint){
 			case 1:
-				child1 = new PopulationInstance(parent1.getMoveRate(), parent2.getSightRadius(), parent2.getNewBaseDist(), parent2.getEqualShips());
-				child2 = new PopulationInstance(parent2.getMoveRate(), parent1.getSightRadius(), parent1.getNewBaseDist(), parent1.getEqualShips());
+				child1 = new PopulationInstance(parent1.getMoveRate(), parent2.getSightRadius(), parent2.getNewBaseDist(), parent2.getshipsToBase());
+				child2 = new PopulationInstance(parent2.getMoveRate(), parent1.getSightRadius(), parent1.getNewBaseDist(), parent1.getshipsToBase());
 				break;
 			case 2:
-				child1 = new PopulationInstance(parent1.getMoveRate(), parent1.getSightRadius(), parent2.getNewBaseDist(), parent2.getEqualShips());
-				child2 = new PopulationInstance(parent2.getMoveRate(), parent2.getSightRadius(), parent1.getNewBaseDist(), parent1.getEqualShips());
+				child1 = new PopulationInstance(parent1.getMoveRate(), parent1.getSightRadius(), parent2.getNewBaseDist(), parent2.getshipsToBase());
+				child2 = new PopulationInstance(parent2.getMoveRate(), parent2.getSightRadius(), parent1.getNewBaseDist(), parent1.getshipsToBase());
 				break;
 			case 3:
-				child1 = new PopulationInstance(parent1.getMoveRate(), parent1.getSightRadius(), parent1.getNewBaseDist(), parent2.getEqualShips());
-				child2 = new PopulationInstance(parent2.getMoveRate(), parent2.getSightRadius(), parent2.getNewBaseDist(), parent1.getEqualShips());
+				child1 = new PopulationInstance(parent1.getMoveRate(), parent1.getSightRadius(), parent1.getNewBaseDist(), parent2.getshipsToBase());
+				child2 = new PopulationInstance(parent2.getMoveRate(), parent2.getSightRadius(), parent2.getNewBaseDist(), parent1.getshipsToBase());
 				break;
 			default:
 				child1 = new PopulationInstance();
@@ -203,9 +212,9 @@ public class Learner{
 		}
 		
 		//mutate
-		if(rand.nextDouble() < .001){
+		if(rand.nextDouble() < (.1/gNum)){
+			//get mutation bit between 0 and 3
 			int mutate = rand.nextInt(4);
-			System.out.println("Child1 mutating gene: " + mutate);
 			switch(mutate){
 				case 1:
 					child1.setMoveRate(rand.nextInt(5));
@@ -217,17 +226,13 @@ public class Learner{
 					child1.setNewBaseDist(rand.nextInt(10));
 					break;
 				default:
-					if(child1.getEqualShips() == 0){
-						child1.setEqualShips(1);
-					} else {
-						child1.setEqualShips(0);
-					}
+					child1.setshipsToBase(rand.nextInt(10));
 					break;
 			}
 		}
-		if(rand.nextDouble() < .001){
+		if(rand.nextDouble() < .01){
+			//get mutation bit between 0 and 3
 			int mutate = rand.nextInt(4);
-			System.out.println("Child2 mutating gene: " + mutate);
 			switch(mutate){
 				case 1:
 					child2.setMoveRate(rand.nextInt(5));
@@ -239,11 +244,7 @@ public class Learner{
 					child2.setNewBaseDist(rand.nextInt(10));
 					break;
 				default:
-					if(child2.getEqualShips() == 0){
-						child2.setEqualShips(1);
-					} else {
-						child2.setEqualShips(0);
-					}
+					child1.setshipsToBase(rand.nextInt(10));
 					break;
 			}
 		}
@@ -253,23 +254,24 @@ public class Learner{
 	}
 
 	private static PopulationInstance tournament(int size, PenaGarrisonPopulation pop){
-		 Random rand = new Random();
+		Random rand = new Random();
 		ArrayList<PopulationInstance> contestants = new ArrayList<PopulationInstance>();
 		ArrayList<Double> scores = new ArrayList<Double>();
 		ArrayList<Integer> selections = new ArrayList<Integer>();
 		int i = 0;
-		System.out.println("selecting potential parents");
 		while(i < size){
+			//Select 5 unique population members
 			int j = rand.nextInt(pop.getPopSize());
 			if(!(selections.contains(j))){
+				//member is unique, store it
 				selections.add(j);
 				contestants.add(pop.getPopulationInstance(j));
 				scores.add(pop.getFitness()[j]);
-				System.out.println("Candidate " + i + ": " + pop.getFitness()[j]);
 				i++;
 			}
 		}
 		
+		//select best of the 5
 		PopulationInstance bestMem = null;
 		double bestScore = 0;
 		for(Double d : scores){
@@ -278,7 +280,7 @@ public class Learner{
 				bestScore = d;
 			}
 		}
-		System.out.println("Chose candidate:" + scores.indexOf(bestScore));
+		//return the best
 		return bestMem;
 	}
 

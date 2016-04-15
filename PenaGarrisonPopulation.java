@@ -9,7 +9,9 @@ public class PenaGarrisonPopulation {
 	private int populationSize;
 	//stores the current population to be checked
 	private int currentPopMember;
-
+	//stores the number of games a member has been involved in
+	private int games;
+	
 	public PenaGarrisonPopulation(int popSize) {
 		populationSize = popSize;
 		// make an empty population
@@ -17,6 +19,7 @@ public class PenaGarrisonPopulation {
 		// make space for the fitness scores
 		fitnessScores = new double[populationSize];
 		currentPopMember = 0;
+		games = 0;
 	}
 
 	public PenaGarrisonPopulation() {
@@ -30,6 +33,7 @@ public class PenaGarrisonPopulation {
 		// make space for the fitness scores
 		fitnessScores = new double[populationSize];
 		currentPopMember = 0;
+		games = 0;
 	}
 
 	//get specific member of population
@@ -65,6 +69,24 @@ public class PenaGarrisonPopulation {
 		currentPopMember = currPop;
 	}
 	
+	//get the current population member
+	//used to determine who is being run
+	public int getGames(){
+		return games;
+	}
+	
+	//increment the current population member
+	//used at shutdown for next run
+	public void incrementGames(){
+		games++;
+	}
+	
+	//set the current population member
+	//used to ensure ladder runs best options
+	public void setGame(int game){
+		games = game;
+	}
+	
 	//get the current size of the population
 	//we're using n=30 at time of writing this
 	public int getPopSize(){
@@ -75,6 +97,10 @@ public class PenaGarrisonPopulation {
 	//also used to sort final population
 	public double[] getFitness(){
 		return fitnessScores;
+	}
+	
+	public double getScore(int popMem){
+		return fitnessScores[popMem];
 	}
 	
 	//used by learning class to seed new generations

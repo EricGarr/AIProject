@@ -4,7 +4,7 @@ import java.util.Random;
 
 public class PopulationInstance {
 	//chromosomes
-	int moveRate, sightRadius, newBaseDist, equalShips;
+	int moveRate, sightRadius, newBaseDist, shipsToBase;
 
 	//default constructor
 	public PopulationInstance() {
@@ -12,7 +12,7 @@ public class PopulationInstance {
 		moveRate = rand.nextInt(5);
 		sightRadius = rand.nextInt(16);
 		newBaseDist = rand.nextInt(10);
-		equalShips = rand.nextInt(2);
+		shipsToBase = rand.nextInt(10);
 	}
 
 	//constructor
@@ -20,7 +20,7 @@ public class PopulationInstance {
 		moveRate = move;
 		sightRadius = sight;
 		newBaseDist = base;
-		equalShips = ships;
+		shipsToBase = ships;
 	}
 	
 	//get the move rate
@@ -54,13 +54,13 @@ public class PopulationInstance {
 	}
 
 	//do we keep ships and bases about equal?
-	public int getEqualShips() {
-		return equalShips;
+	public int getshipsToBase() {
+		return shipsToBase;
 	}
 
 	//set if we keep ships and bases equal
-	public void setEqualShips(int equalShips) {
-		this.equalShips = equalShips;
+	public void setshipsToBase(int shipsToBase) {
+		this.shipsToBase = shipsToBase;
 	}
 	
 }

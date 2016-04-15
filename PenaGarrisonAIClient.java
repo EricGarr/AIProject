@@ -77,7 +77,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	int moveRate = 0;					//Ship speed.  0-4
 	int sightRadius = 0;				//Maximum distance from the ship that an asteroid can be for collection.  0-15
 	int newBaseDist = 0;				//Minimum distance for a new base from the old ones.  0-9
-	int equalShips = 0;					//Do we keep the number of bases equal to the number of ships? 0-1
+	int shipsToBase = 0;				//Do we keep the number of bases equal to the number of ships? 0-1
 	int popMemberNum = -1;				//Which member of the population am I?
 	
 	PenaGarrisonPopulation population;
@@ -488,6 +488,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		
 		//uncomment for ladder
 		/*population.setCurrentPopMember(0);/**/
+		//population.setGame(0);
 		
 		//get the move rate from the current population member
 		moveRate = population.getPopulationInstance(population.getCurrentPopMember()).getMoveRate();
@@ -496,7 +497,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		//get the minimum distance for a new base from the current population member
 		newBaseDist = population.getPopulationInstance(population.getCurrentPopMember()).getNewBaseDist();
 		//with the ships and bases be approx. equal for this population member
-		equalShips = population.getPopulationInstance(population.getCurrentPopMember()).getEqualShips();
+		shipsToBase = population.getPopulationInstance(population.getCurrentPopMember()).getshipsToBase();
 	}
 	
 	public static void touch(File file){
@@ -535,18 +536,26 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
+		double score = 0;
 		for(ImmutableTeamInfo t : space.getTeamInfo()){
 			if(t.getTeamName().equalsIgnoreCase(getTeamName())){
-				population.storeFitness(population.getCurrentPopMember(), t.getScore());
+				score = population.getScore(population.getCurrentPopMember()) + t.getScore();
 			}
 		}
 				
 		XStream xstream = new XStream();
 		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
 		
-		///*following section needed for learning.  Should not be enabled in ladder
-		population.incrementCurrentPopMember();
-
+		if(population.getGames()<2){
+			population.incrementGames();
+			population.storeFitness(population.getCurrentPopMember(), score);
+		}else {
+			population.storeFitness(population.getCurrentPopMember(), (score/3));
+			///*following section needed for learning.  Should not be enabled in ladder
+			population.incrementCurrentPopMember();
+			population.setGame(0);
+		}
+		
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
 			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
@@ -581,30 +590,26 @@ public class PenaGarrisonAIClient extends TeamClient {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		
-		if(equalShips == 1){
-			int numBases = 0;
+		if(shipsToBase != 0){
 			int numShips = 0;
-			for(Base base : space.getBases()){
-				if(base.getTeamName().equalsIgnoreCase(getTeamName())){
-					numBases++;
-				}
-			}
-			
 			for(Ship ship : space.getShips()){
 				if(ship.getTeamName().equalsIgnoreCase(getTeamName())){
 					numShips++;
 				}
 			}
-			
-			if(numBases < numShips){
-				buyBase = true;
-				buyShip = false;
-			} else {
+			int numBases = 0;
+			for(Base base : space.getBases()){
+				if(base.getTeamName().equalsIgnoreCase(getTeamName())){
+					numBases++;
+				}
+			}
+			if(numShips < (shipsToBase * numBases)){
+				buyShip = true;
 				buyBase = false;
+			} else {
+				buyBase = true;
 				buyShip = true;
 			}
-		} else {
-			buyShip = true;
 		}
 		
 		//purchase a new base
@@ -640,7 +645,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					buyBase = true;
 					break;
 				}
 
