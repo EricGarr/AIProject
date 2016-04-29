@@ -48,6 +48,8 @@ import spacesettlers.utilities.Vector2D;
 public class PenaGarrisonAIClient extends TeamClient {
 	//ship state tracker
 	SingleShipState shipState;
+	//
+	Planner planner = new Planner();
 	//current targets
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;	
@@ -188,7 +190,18 @@ public class PenaGarrisonAIClient extends TeamClient {
 	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship, int sight, Set<Asteroid> currAsts){
 		//get the list of asteroids
 		Set<Asteroid> asteroids = space.getAsteroids();
+		
+		/**This only lets ships get asteroids composed of more than 60% Metal.*/
+		Set<Asteroid> onlyMetals = new HashSet<Asteroid>();
+		for(Asteroid ast : asteroids) {
+			if(ast.getMetalsProportion() < .6) {
+				onlyMetals.add(ast);
+			}
+		}
+		asteroids.removeAll(onlyMetals);
+		
 		asteroids.removeAll(currAsts);
+		//asteroids.removeAll(currAsts);
 		double test = Double.MIN_VALUE;
 		//best asteroid found so far
 		Asteroid best = null;
