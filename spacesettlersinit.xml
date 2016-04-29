@@ -4,9 +4,9 @@
 	<classname>garr9903.PenaGarrisonAIClient</classname>
 	
 	<!-- You can choose the color your team's ships will be on the screen.  Specify the red, green, and blue components -->
-	<teamColorRed>200</teamColorRed>
-	<teamColorGreen>100</teamColorGreen>
-	<teamColorBlue>200</teamColorBlue>
+	<teamColorRed>125</teamColorRed>
+	<teamColorGreen>125</teamColorGreen>
+	<teamColorBlue>150</teamColorBlue>
 	
 	<!-- The name that shows up in the ladder -->
 	<!-- <ladderName>Aggressive Heuristic Asteroid Collector Team</ladderName> -->
