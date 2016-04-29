@@ -1,4 +1,4 @@
-package garr9903;
+package pena7065;
 
 
 import com.thoughtworks.xstream.XStream;
@@ -52,7 +52,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;	
 	HashMap <UUID, Stack<Node>> movements;
-	
+
 	//nodes of the graph
 	Set<Node> nodes;
 	//farthest distance a node and "see" another node
@@ -92,14 +92,18 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		
+		Set<SingleShipState> shipStates = new HashSet<SingleShipState>();
+		Set<Asteroid> currAsts = new HashSet<Asteroid>();
+		Set<Beacon> currBeacons = new HashSet<Beacon>();
+		Set<Base> currBases = new HashSet<Base>();
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				shipState = new SingleShipState(ship);
+				shipStates.add(shipState);
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship);
+				action = getAsteroidCollectorAction(space, ship, shipStates, currAsts, currBeacons, currBases);
 				actions.put(ship.getId(), action);
 			}
 		} 
@@ -110,9 +114,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * Gets the action for the asteroid collecting ship
 	 * @param space
 	 * @param ship
+	 * @param shipStates 
+	 * @param currAsts 
+	 * @param currBeacons 
+	 * @param currBases 
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship) {
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship, 
+			Set<SingleShipState> shipStates, Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
 		try{
 			AbstractAction current = ship.getCurrentAction();
 			Position currentPosition = ship.getPosition();
@@ -125,14 +134,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 				
 				// aim for a beacon if there isn't enough energy
 				if (ship.getEnergy() <= 2000) {
-					target = getNearestBeacon(space, ship);
+					target = getNearestBeacon(space, ship, currBeacons);
 					aimingForBase.put(ship.getId(), false);
 				}
 				
 				// if the ship has enough resourcesAvailable or time is about up: take them back to base
 				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19900) {
 					//choose a base
-					target = getNearestBase(space, ship);
+					target = getNearestBase(space, ship, currBases);
 					aimingForBase.put(ship.getId(), true);
 				}
 				
@@ -144,7 +153,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				
 				//if nothing else is needed, get an asteroid
 				if (target == null || current == null) {
-					target = getBestAsteroid(space, ship, shipSight);
+					target = getBestAsteroid(space, ship, shipSight, currAsts);
 					targets.put(target.getId(), ship);
 					aimingForBase.put(ship.getId(), false);
 				}
@@ -176,9 +185,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	//finds the asteroid with the best ratio of resources/distance
-	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship, int sight){
+	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship, int sight, Set<Asteroid> currAsts){
 		//get the list of asteroids
 		Set<Asteroid> asteroids = space.getAsteroids();
+		asteroids.removeAll(currAsts);
 		double test = Double.MIN_VALUE;
 		//best asteroid found so far
 		Asteroid best = null;
@@ -190,24 +200,27 @@ public class PenaGarrisonAIClient extends TeamClient {
 					best = ast;
 					test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
 				}
-			} else {
-				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
-					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-						//if a better asteroid is found, store it, and it's ratio
-						best = ast;
-						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-					}
-				}
 			}
+//			else {
+//				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
+//					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+//						//if a better asteroid is found, store it, and it's ratio
+//						best = ast;
+//						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+//					}
+//				}
+//			}
 		}
 		//return the best asteroid found
+		currAsts.add(best);
 		return best;
 	}
 	
 	//ship is low on energy, find the best source
-	AbstractObject getNearestBeacon(Toroidal2DPhysics space, Ship ship){
+	AbstractObject getNearestBeacon(Toroidal2DPhysics space, Ship ship, Set<Beacon> currBeacons){
 		//get the list of current beacons
 		Set<Beacon> beacons = space.getBeacons();
+		beacons.removeAll(currBeacons);
 		double closestBeacon = Double.MAX_VALUE;
 		//best beacon found so far
 		Beacon bestBeacon = null;
@@ -239,6 +252,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		}
 		//return the closest energy option
 		if(closestBase > closestBeacon){
+			currBeacons.add(bestBeacon);
 			return bestBeacon;
 		} else {
 			return bestBase;
@@ -247,9 +261,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	//ships hull is full enough, find the nearest base to turn resources in
-	Base getNearestBase(Toroidal2DPhysics space, Ship ship){
+	Base getNearestBase(Toroidal2DPhysics space, Ship ship, Set<Base> currBases){
 		//get the list of bases
 		Set<Base> bases = space.getBases();
+		bases.removeAll(currBases);
 		double nearest = Double.MAX_VALUE;
 		//initialize the current best base found
 		Base best = null;
@@ -278,6 +293,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			}
 		}
 		//return the target base
+		currBases.add(best);
 		return best;
 	}
 	
@@ -501,13 +517,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	public static void touch(File file){
-		try {
-			if (!file.exists()){
-				new FileOutputStream(file).close();
-			}
-		} catch (Exception e) {
-			System.out.println(e);
-		}
+//		try {
+//			if (!file.exists()){
+//				new FileOutputStream(file).close();
+//			}
+//		} catch (Exception e) {
+//			System.out.println(e);
+//		}
 	}
 
 	/*
@@ -536,38 +552,38 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
-		double score = 0;
-		for(ImmutableTeamInfo t : space.getTeamInfo()){
-			if(t.getTeamName().equalsIgnoreCase(getTeamName())){
-				score = population.getScore(population.getCurrentPopMember()) + t.getScore();
-			}
-		}
-				
-		XStream xstream = new XStream();
-		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
-		
-		if(population.getGames()<2){
-			population.incrementGames();
-			population.storeFitness(population.getCurrentPopMember(), score);
-		}else {
-			population.storeFitness(population.getCurrentPopMember(), (score/3));
-			///*following section needed for learning.  Should not be enabled in ladder
-			population.incrementCurrentPopMember();
-			population.setGame(0);
-		}
-		
-		try { 
-			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
-		} catch (XStreamException e) {
-			// if you get an error, handle it somehow as it means your knowledge didn't save
-			// the error will happen the first time you run
-			population = new PenaGarrisonPopulation();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			population = new PenaGarrisonPopulation();
-		}
-		/*end section*/
+//		double score = 0;
+//		for(ImmutableTeamInfo t : space.getTeamInfo()){
+//			if(t.getTeamName().equalsIgnoreCase(getTeamName())){
+//				score = population.getScore(population.getCurrentPopMember()) + t.getScore();
+//			}
+//		}
+//				
+//		XStream xstream = new XStream();
+//		xstream.alias("PenaGarrisonPopulation", PenaGarrisonPopulation.class);
+//		
+//		if(population.getGames()<2){
+//			population.incrementGames();
+//			population.storeFitness(population.getCurrentPopMember(), score);
+//		}else {
+//			population.storeFitness(population.getCurrentPopMember(), (score/3));
+//			///*following section needed for learning.  Should not be enabled in ladder
+//			population.incrementCurrentPopMember();
+//			population.setGame(0);
+//		}
+//		
+//		try { 
+//			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+//			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
+//		} catch (XStreamException e) {
+//			// if you get an error, handle it somehow as it means your knowledge didn't save
+//			// the error will happen the first time you run
+//			population = new PenaGarrisonPopulation();
+//		} catch (FileNotFoundException e) {
+//			// TODO Auto-generated catch block
+//			population = new PenaGarrisonPopulation();
+//		}
+//		/*end section*/
 	}
 
 	@Override
