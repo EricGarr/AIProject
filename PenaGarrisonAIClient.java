@@ -69,10 +69,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	double BASE_BUYING_DISTANCE = 0;	//minimum distance from other bases
 	boolean buyShip = false;			//determines if a ship can be bought
 	boolean buyBase = false;			//determines if a base can be bought 
-	
-	int speed = 0;						//max ship speed
-	int shipSight = 0;					//max ship sight
-	
+
 	//genes
 	int moveRate = 0;					//Ship speed.  0-4
 	int sightRadius = 0;				//Maximum distance from the ship that an asteroid can be for collection.  0-15
@@ -92,7 +89,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		Set<SingleShipState> shipStates = new HashSet<SingleShipState>();
 		Set<Asteroid> currAsts = new HashSet<Asteroid>();
 		Set<Beacon> currBeacons = new HashSet<Beacon>();
 		Set<Base> currBases = new HashSet<Base>();
@@ -101,9 +97,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				shipState = new SingleShipState(ship);
-				shipStates.add(shipState);
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship, shipStates, currAsts, currBeacons, currBases);
+				action = getAsteroidCollectorAction(space, ship, currAsts, currBeacons, currBases);
 				actions.put(ship.getId(), action);
 			}
 		} 
@@ -120,8 +115,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @param currBases 
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship, 
-			Set<SingleShipState> shipStates, Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship,
+			Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
 		try{
 			AbstractAction current = ship.getCurrentAction();
 			Position currentPosition = ship.getPosition();
@@ -139,7 +134,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				}
 				
 				// if the ship has enough resourcesAvailable or time is about up: take them back to base
-				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19900) {
+				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19800) {
 					//choose a base
 					target = getNearestBase(space, ship, currBases);
 					aimingForBase.put(ship.getId(), true);
@@ -153,16 +148,16 @@ public class PenaGarrisonAIClient extends TeamClient {
 				
 				//if nothing else is needed, get an asteroid
 				if (target == null || current == null) {
-					target = getBestAsteroid(space, ship, shipSight, currAsts);
+					target = getBestAsteroid(space, ship, sightRadius, currAsts);
 					targets.put(target.getId(), ship);
 					aimingForBase.put(ship.getId(), false);
 				}
 				
 				//System.out.println("beginning A*");
 				//perform A* search to find the best path to the base
-				if(movements.containsKey(shipState.getUUID())){
-					movements.remove(shipState.getUUID());
-				}
+				//if(movements.containsKey(shipState.getUUID())){
+				//	movements.remove(shipState.getUUID());
+				//}
 				//moves = makeGraph(ship.getPosition(), target.getPosition(), space);
 				//movements.put(shipState.getUUID(), moves);
 				newAction = calcMove(space, currentPosition, target.getPosition());
@@ -201,15 +196,22 @@ public class PenaGarrisonAIClient extends TeamClient {
 					test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
 				}
 			}
-//			else {
-//				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
-//					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-//						//if a better asteroid is found, store it, and it's ratio
-//						best = ast;
-//						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-//					}
-//				}
-//			}
+			else {
+				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
+					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+						//if a better asteroid is found, store it, and it's ratio
+						best = ast;
+						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+					}
+				}
+				if(best == null){
+					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
+						//if a better asteroid is found, store it, and it's ratio
+						best = ast;
+						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
+					}
+				}
+			}
 		}
 		//return the best asteroid found
 		currAsts.add(best);
@@ -304,7 +306,10 @@ public class PenaGarrisonAIClient extends TeamClient {
 		vect.setX(vect.getXValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
 		vect.setY(vect.getYValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
 		//move to the target
-		return new MoveAction(space, current, target, vect);
+		MoveAction temp = new MoveAction(space, current, target, vect);
+		temp.setKpRotational(0);
+		temp.setKvRotational(0);
+		return temp;
 	}
 	
 	/*
@@ -624,7 +629,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				buyBase = false;
 			} else {
 				buyBase = true;
-				buyShip = true;
+				buyShip = false;
 			}
 		}
 		
