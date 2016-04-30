@@ -49,7 +49,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	//ship state tracker
 	SingleShipState shipState;
 	//
-	Planner planner = new Planner();
+	Planner planner;
 	//current targets
 	HashMap <UUID, Ship> targets;
 	HashMap <UUID, Boolean> aimingForBase;	
@@ -97,7 +97,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 		Set<SingleShipState> shipStates = new HashSet<SingleShipState>();
 		Set<Asteroid> currAsts = new HashSet<Asteroid>();
 		Set<Beacon> currBeacons = new HashSet<Beacon>();
-		Set<Base> currBases = new HashSet<Base>();
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
@@ -105,7 +104,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				shipState = new SingleShipState(ship);
 				shipStates.add(shipState);
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship, shipStates, currAsts, currBeacons, currBases);
+				action = getAsteroidCollectorAction(space, ship, shipStates, currAsts, currBeacons);
 				actions.put(ship.getId(), action);
 			}
 		} 
@@ -123,7 +122,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @return
 	 */
 	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship, 
-			Set<SingleShipState> shipStates, Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
+			Set<SingleShipState> shipStates, Set<Asteroid> currAsts, Set<Beacon> currBeacons) {
 		try{
 			AbstractAction current = ship.getCurrentAction();
 			Position currentPosition = ship.getPosition();
@@ -143,7 +142,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				// if the ship has enough resourcesAvailable or time is about up: take them back to base
 				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19900) {
 					//choose a base
-					target = getNearestBase(space, ship, currBases);
+					target = getNearestBase(space, ship);
 					aimingForBase.put(ship.getId(), true);
 				}
 				
@@ -194,14 +193,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 		/**This only lets ships get asteroids composed of more than 60% Metal.*/
 		Set<Asteroid> onlyMetals = new HashSet<Asteroid>();
 		for(Asteroid ast : asteroids) {
-			if(ast.getMetalsProportion() < .6) {
+			if(ast.getWaterProportion() < .6) {
 				onlyMetals.add(ast);
 			}
 		}
 		asteroids.removeAll(onlyMetals);
-		
 		asteroids.removeAll(currAsts);
-		//asteroids.removeAll(currAsts);
+		
 		double test = Double.MIN_VALUE;
 		//best asteroid found so far
 		Asteroid best = null;
@@ -274,10 +272,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 	}
 	
 	//ships hull is full enough, find the nearest base to turn resources in
-	Base getNearestBase(Toroidal2DPhysics space, Ship ship, Set<Base> currBases){
+	Base getNearestBase(Toroidal2DPhysics space, Ship ship){
 		//get the list of bases
 		Set<Base> bases = space.getBases();
-		bases.removeAll(currBases);
 		double nearest = Double.MAX_VALUE;
 		//initialize the current best base found
 		Base best = null;
@@ -306,7 +303,6 @@ public class PenaGarrisonAIClient extends TeamClient {
 			}
 		}
 		//return the target base
-		currBases.add(best);
 		return best;
 	}
 	
