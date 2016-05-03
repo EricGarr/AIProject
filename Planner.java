@@ -242,13 +242,25 @@ public class Planner {
 		}
 		
 		System.out.println("calculating movement");
-		AbstractAction getCurrTarget = calcMove(
-				space,
-				space.getObjectById(id).getPosition(),
-				space.getObjectById(targets.get(id).get(0)).getPosition()
-				);
-		System.out.println("returning movement");
-		return getCurrTarget;
+		// Have you been to base and are going again?
+		if(space.getObjectById(id).getResources().getTotal() == 0.0) {
+			if(space.getBases().contains(space.getObjectById(targets.get(id).get(0)))) {
+				removeTarget(targets.get(id).get(0));
+			}
+		}
+		
+		try {
+			AbstractAction getCurrTarget = calcMove(
+					space,
+					space.getObjectById(id).getPosition(),
+					space.getObjectById(targets.get(id).get(0)).getPosition()
+					);
+			System.out.println("returning movement");
+			return getCurrTarget;
+		} catch (NullPointerException e) {
+			removeTarget(targets.get(id).get(0));			
+			return getAction(space, id);
+		}
 	}
 	
 	public void replan(Toroidal2DPhysics space){
