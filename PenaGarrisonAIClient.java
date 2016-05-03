@@ -62,6 +62,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 	//how often can A* be re-run
 	@SuppressWarnings("unused")
 	private static int REMAP = 20;
+	private static int REPLAN = 1000;
 	//when was the last A* run?
 	@SuppressWarnings("unused")
 	private int lastRun = 0;
@@ -78,10 +79,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	int popMemberNum = -1;				//Which member of the population am I?
 	
 	PenaGarrisonPopulation population;
-	/**
-	 * Example knowledge used to show how to load in/save out to files for learning
-	 */
-	ExampleKnowledge myKnowledge;
+	
+	Planner plan = null;
 
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -101,7 +100,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 				action = getAsteroidCollectorAction(space, ship, currAsts, currBeacons, currBases);
 				actions.put(ship.getId(), action);
 			}
-		} 
+		}
 		return actions;
 	}
 	
@@ -117,57 +116,16 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 */
 	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship,
 			Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
+		if(space.getCurrentTimestep() == 0 || (space.getCurrentTimestep() - lastRun) > REPLAN){
+			lastRun = space.getCurrentTimestep();
+			plan.replan(space);
+		}
+		
 		try{
 			AbstractAction current = ship.getCurrentAction();
-			Position currentPosition = ship.getPosition();
 			AbstractAction newAction = current;
-			AbstractObject target = null;
-			//makeGraph(Position current, Position target, Toroidal2DPhysics space)
-			//if(space.getCurrentTimestep() - lastRun >= REMAP){
-				//lastRun = space.getCurrentTimestep();
-				//System.out.println(shipState.getState());
-				
-				// aim for a beacon if there isn't enough energy
-				if (ship.getEnergy() <= 2000) {
-					target = getNearestBeacon(space, ship, currBeacons);
-					aimingForBase.put(ship.getId(), false);
-				}
-				
-				// if the ship has enough resourcesAvailable or time is about up: take them back to base
-				if (ship.getResources().getTotal() >= 750 || space.getCurrentTimestep() >= 19800) {
-					//choose a base
-					target = getNearestBase(space, ship, currBases);
-					aimingForBase.put(ship.getId(), true);
-				}
-				
-				//did I turn in my resources?
-				if (ship.getResources().getTotal() == 0 && aimingForBase.containsKey(ship.getId()) && aimingForBase.get(ship.getId())){
-					current = null;
-					aimingForBase.put(ship.getId(), false);
-				}
-				
-				//if nothing else is needed, get an asteroid
-				if (target == null || current == null) {
-					target = getBestAsteroid(space, ship, sightRadius, currAsts);
-					targets.put(target.getId(), ship);
-					aimingForBase.put(ship.getId(), false);
-				}
-				
-				//System.out.println("beginning A*");
-				//perform A* search to find the best path to the base
-				//if(movements.containsKey(shipState.getUUID())){
-				//	movements.remove(shipState.getUUID());
-				//}
-				//moves = makeGraph(ship.getPosition(), target.getPosition(), space);
-				//movements.put(shipState.getUUID(), moves);
-				newAction = calcMove(space, currentPosition, target.getPosition());
-			//}
-			/*
-			if(!movements.get(shipState.getUUID()).isEmpty()){
-				if(space.findShortestDistance(currentPosition, movements.get(shipState.getUUID()).peek().getLoc()) > 15){
-					newAction = calcMove(space, currentPosition, movements.get(shipState.getUUID()).pop().getLoc());
-				}
-			}*/
+			
+			newAction = plan.getAction(space, ship.getId());
 			
 			if(newAction != null){
 				return newAction;
@@ -175,141 +133,9 @@ public class PenaGarrisonAIClient extends TeamClient {
 				return new DoNothingAction();
 			}
 		}catch (Exception e){
+			System.out.println("Timed out.");
 			return new DoNothingAction();
 		}
-	}
-	
-	//finds the asteroid with the best ratio of resources/distance
-	Asteroid getBestAsteroid(Toroidal2DPhysics space, Ship ship, int sight, Set<Asteroid> currAsts){
-		//get the list of asteroids
-		Set<Asteroid> asteroids = space.getAsteroids();
-		asteroids.removeAll(currAsts);
-		double test = Double.MIN_VALUE;
-		//best asteroid found so far
-		Asteroid best = null;
-		for(Asteroid ast : asteroids){
-			//calculate the ratio of resources to distance for each asteriod
-			if(sight == 0){
-				if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-					//if a better asteroid is found, store it, and it's ratio
-					best = ast;
-					test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-				}
-			}
-			else {
-				if(space.findShortestDistance(ship.getPosition(), ast.getPosition()) <= sight){
-					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-						//if a better asteroid is found, store it, and it's ratio
-						best = ast;
-						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-					}
-				}
-				if(best == null){
-					if(ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition()) > test){
-						//if a better asteroid is found, store it, and it's ratio
-						best = ast;
-						test = ast.getResources().getTotal() / space.findShortestDistance(ship.getPosition(), ast.getPosition());
-					}
-				}
-			}
-		}
-		//return the best asteroid found
-		currAsts.add(best);
-		return best;
-	}
-	
-	//ship is low on energy, find the best source
-	AbstractObject getNearestBeacon(Toroidal2DPhysics space, Ship ship, Set<Beacon> currBeacons){
-		//get the list of current beacons
-		Set<Beacon> beacons = space.getBeacons();
-		beacons.removeAll(currBeacons);
-		double closestBeacon = Double.MAX_VALUE;
-		//best beacon found so far
-		Beacon bestBeacon = null;
-		for(Beacon beacon : beacons){
-			//find the distance to the beacon
-			double dist = space.findShortestDistance(beacon.getPosition(), ship.getPosition());
-			if(dist < closestBeacon){
-				//if the beacon is closer, store it and its distance
-				bestBeacon = beacon;
-				closestBeacon = dist;
-			}
-		}
-		//get the list of bases
-		Set<Base> bases = space.getBases();
-		double closestBase = Double.MAX_VALUE;
-		//initialize the best base
-		Base bestBase = null;
-		for(Base base : bases){
-			//check if base has enough energy and is ours
-			if(base.getTeamName() == this.getTeamName() && base.getEnergy() > 1000){
-				//check base distance
-				double dist = space.findShortestDistance(base.getPosition(), ship.getPosition());
-				if(dist < closestBase){
-					//if better, store
-					bestBase = base;
-					closestBase = dist;
-				}
-			}
-		}
-		//return the closest energy option
-		if(closestBase > closestBeacon){
-			currBeacons.add(bestBeacon);
-			return bestBeacon;
-		} else {
-			return bestBase;
-		}
-		//return bestBeacon;
-	}
-	
-	//ships hull is full enough, find the nearest base to turn resources in
-	Base getNearestBase(Toroidal2DPhysics space, Ship ship, Set<Base> currBases){
-		//get the list of bases
-		Set<Base> bases = space.getBases();
-		bases.removeAll(currBases);
-		double nearest = Double.MAX_VALUE;
-		//initialize the current best base found
-		Base best = null;
-		for (Base base : bases){
-			//check if base is ours, and if the path is clear
-			if(base.getTeamName() == ship.getTeamName() && space.isPathClearOfObstructions(ship.getPosition(), base.getPosition(), space.getAllObjects(), ship.getRadius())){
-				//find the distance to the base
-				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
-				if(dist < nearest){
-					//if distance is better, store the base and the new distance
-					best = base;
-					nearest = dist; 
-				}
-			}
-		}
-		//same as above, but doesn't care if the path is clear
-		if(best == null){
-			for (Base base : bases){
-				if(base.getTeamName() == ship.getTeamName()){
-					double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
-					if(dist < nearest){
-						best = base;
-						nearest = dist; 
-					}
-				}
-			}
-		}
-		//return the target base
-		currBases.add(best);
-		return best;
-	}
-	
-	AbstractAction calcMove(Toroidal2DPhysics space, Position current, Position target){
-		//get the unit vector to the target
-		Vector2D vect = space.findShortestDistanceVector(current, target).getUnitVector();
-		//set the unit vector to the fastest speed
-		vect.setX(vect.getXValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
-		vect.setY(vect.getYValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
-		//move to the target
-		MoveAction temp = new MoveAction(space, current, target, vect);
-		temp.setKpRotational(0);
-		temp.setKvRotational(0);
-		return temp;
 	}
 	
 	/*
@@ -470,6 +296,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
 			if (asteroid == null || !asteroid.isAlive()) {
 				finishedAsteroids.add(asteroid);
+				plan.removeTarget(asteroidId);
 			}
 		}
 
@@ -519,6 +346,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 		newBaseDist = population.getPopulationInstance(population.getCurrentPopMember()).getNewBaseDist();
 		//with the ships and bases be approx. equal for this population member
 		shipsToBase = population.getPopulationInstance(population.getCurrentPopMember()).getshipsToBase();
+		
+		plan = new Planner(sightRadius, this.getTeamName());
 	}
 	
 	public static void touch(File file){
