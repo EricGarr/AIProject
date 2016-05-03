@@ -44,79 +44,65 @@ public class Planner {
 	}
 	
 	public void plan(Toroidal2DPhysics space, UUID id){
-		//System.out.println("creating plan objects");
-		
-		//System.out.println("getting asteroids");
-		Set<Asteroid> freeAsteroids = space.getAsteroids();
-		
-		//System.out.println("getting beacons");
-		Set<Beacon> freeBeacons = space.getBeacons();
-		
-		System.out.println("getting bases");
-		Set<Base> currBases = space.getBases();
-		System.out.println("removing bases");
-		for(Base b : currBases){
-			System.out.println("is the base mine?");
-			if(!(b.getTeamName().equalsIgnoreCase(teamName))){
-				currBases.remove(b);
+		Set<Asteroid> freeAsteroids = new HashSet<Asteroid>();
+		for(Asteroid ast : space.getAsteroids()){
+			if(!(currAsts.contains(ast))){
+				freeAsteroids.add(ast);
 			}
 		}
 		
-		System.out.println("creating target object");
+		Set<Beacon> freeBeacons = new HashSet<Beacon>();
+		for(Beacon b : space.getBeacons()){
+			if(!(currBeacons.contains(b))){
+				freeBeacons.add(b);
+			}
+		}
+		
+		Set<Base> currBases = new HashSet<Base>();
+		for(Base b : space.getBases()){
+			if(b.getTeamName().equalsIgnoreCase(teamName)){
+				currBases.add(b);
+			}
+		}
+		
 		AbstractObject target = null;
 		int currTarget = 0;
 		Position loc = space.getObjectById(id).getPosition();
 		
-		System.out.println("adding targets to plan");
 		while(targets.get(id).size() < 5){
-			System.out.println("removing asteroids");
-			freeAsteroids.removeAll(currAsts);
-			
-			System.out.println("removing beacons");
-			freeBeacons.removeAll(currBeacons);
-			
-			System.out.println("storing ship");
 			Ship ship = (Ship) space.getObjectById(id);
-			System.out.println("storing energy");
 			double energy = ship.getEnergy();
-			System.out.println("storing resources");
 			double resources = ship.getResources().getTotal();
 			
 			if(resources >= 750){
-				System.out.println("adding base");
 				if(currTarget == 0){
 					target = getBestBase(space, ship, currBases);
 				} else {
-					target = getBestBase(space, space.getObjectById(targets.get(id).get(currTarget)), currBases);
+					target = getBestBase(space, space.getObjectById(targets.get(id).get(currTarget-1)), currBases);
 				}
 				
 				resources = 0;
 			} else if(energy < 2000 && resources < 750){
-				System.out.println("adding beacon");
 				if(currTarget == 0){
 					target = getBestBeacon(space, ship, freeBeacons);
 				} else {
-					target = getBestBeacon(space, space.getObjectById(targets.get(id).get(currTarget)), freeBeacons);
+					target = getBestBeacon(space, space.getObjectById(targets.get(id).get(currTarget-1)), freeBeacons);
 				}
 				currBeacons.add((Beacon) target);
 			} else {
-				System.out.println("adding asteroid");
 				if(currTarget == 0){
 					target = getBestAsteroid(space, ship, freeAsteroids);
 				} else {
-					target = getBestAsteroid(space, space.getObjectById(targets.get(id).get(currTarget)), freeAsteroids);
+					target = getBestAsteroid(space, space.getObjectById(targets.get(id).get(currTarget-1)), freeAsteroids);
 				}
 				currAsts.add((Asteroid) target);
 				resources = resources + target.getResources().getTotal();
 			}
 			
-			System.out.println("adding target");
 			targets.get(id).add(target.getId());
 			currTarget++;
-			System.out.println("On target number: " + currTarget);
-			System.out.println("Has: " + targets.get(id).size() + " targets now");
 			
-			loc = space.getObjectById(targets.get(id).get(currTarget)).getPosition();
+			loc = target.getPosition();
 			AbstractAction temp = calcMove(space, loc, target.getPosition());
 			Movement actionMovement = temp.getMovement(space, ship);
 			double angularAccel = Math.abs(actionMovement.getAngularAccleration());
@@ -203,18 +189,21 @@ public class Planner {
 		double test = Double.MIN_VALUE;
 		//best asteroid found so far
 		Asteroid best = null;
-		System.out.println("selecting asteroid");
 		if(asts != null){
 			for(Asteroid ast : asts){
-				//calculate the ratio of resources to distance for each asteriod
-				if(ast.getResources().getTotal() / space.findShortestDistance(obj.getPosition(), ast.getPosition()) > test){
-					//if a better asteroid is found, store it, and it's ratio
-					best = ast;
-					test = ast.getResources().getTotal() / space.findShortestDistance(obj.getPosition(), ast.getPosition());
+				if(space.findShortestDistance(obj.getPosition(), ast.getPosition()) <= sight){
+					//calculate the ratio of resources to distance for each asteriod
+					if(ast.getResources().getTotal() / space.findShortestDistance(obj.getPosition(), ast.getPosition()) > test){
+						//if a better asteroid is found, store it, and it's ratio
+						best = ast;
+						test = ast.getResources().getTotal() / space.findShortestDistance(obj.getPosition(), ast.getPosition());
+					}
 				}
 			}
-		} else {
-			for(Asteroid ast : space.getAsteroids()){
+		}
+		//if no asteroid in range was found, select from universe
+		if(best == null){
+			for(Asteroid ast : asts){
 				//calculate the ratio of resources to distance for each asteriod
 				if(ast.getResources().getTotal() / space.findShortestDistance(obj.getPosition(), ast.getPosition()) > test){
 					//if a better asteroid is found, store it, and it's ratio
@@ -224,7 +213,6 @@ public class Planner {
 			}
 		}
 		//return the best asteroid found
-		System.out.println("returning asteroid");
 		currAsts.add(best);
 		return best;
 	}
@@ -249,43 +237,45 @@ public class Planner {
 		}
 		
 		if(targets.get(id).isEmpty()){
-			//System.out.println("Ship needs targets.");
+			System.out.println("Ship needs targets.");
 			plan(space, id);
 		}
 		
+		System.out.println("calculating movement");
 		AbstractAction getCurrTarget = calcMove(
 				space,
 				space.getObjectById(id).getPosition(),
 				space.getObjectById(targets.get(id).get(0)).getPosition()
 				);
+		System.out.println("returning movement");
 		return getCurrTarget;
 	}
 	
 	public void replan(Toroidal2DPhysics space){
-		System.out.println("Replanning");
+//		System.out.println("Replanning");
 		for(Ship ship : space.getShips()){
-			System.out.println(ship.getTeamName());
+//			System.out.println(ship.getTeamName());
 			if(ship.getTeamName().equalsIgnoreCase(teamName)){
-				System.out.println("Found one of my ships.");
+//				System.out.println("Found one of my ships.");
 				
 				if(targets.containsKey(ship.getId())){
-					System.out.println("Removing targets to replan."); 
+//					System.out.println("Removing targets to replan."); 
 					targets.get(ship.getId()).removeAll(targets.get(ship.getId()));
 				}
 				
 				if(!(targets.containsKey(ship.getId()))){
-					System.out.println("Adding it to targets.");
+//					System.out.println("Adding it to targets.");
 					targets.put(ship.getId(), new ArrayList<UUID>());
 				}
-				System.out.println("Planning");
+//				System.out.println("Planning");
 				plan(space, ship.getId());
 			}
 		}
-		System.out.println("planning done.");
+//		System.out.println("planning done.");
 	}
 	
 	public void removeTarget(UUID id){
-		System.out.println("removing asteroid");
+//		System.out.println("removing asteroid");
 		for(ArrayList<UUID> target : targets.values()){
 			if(target.contains(id)){
 				target.remove(target.indexOf(id));

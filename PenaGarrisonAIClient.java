@@ -125,11 +125,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 			AbstractAction current = ship.getCurrentAction();
 			AbstractAction newAction = current;
 			
+			System.out.println("getting movement");
 			newAction = plan.getAction(space, ship.getId());
 			
 			if(newAction != null){
+				System.out.println("movin'");
 				return newAction;
 			} else {
+				System.out.println("doing nuthin'");
 				return new DoNothingAction();
 			}
 		}catch (Exception e){
