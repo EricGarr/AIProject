@@ -1,10 +1,10 @@
 <PenaGarrisonPopulation>
   <population>
     <garr9903.PopulationInstance>
-      <moveRate>1</moveRate>
-      <sightRadius>10</sightRadius>
-      <newBaseDist>6</newBaseDist>
-      <shipsToBase>9</shipsToBase>
+      <moveRate>4</moveRate>
+      <sightRadius>6</sightRadius>
+      <newBaseDist>4</newBaseDist>
+      <shipsToBase>2</shipsToBase>
     </garr9903.PopulationInstance>
     <garr9903.PopulationInstance>
       <moveRate>1</moveRate>
@@ -214,6 +214,6 @@
     <double>0.0</double>
   </fitnessScores>
   <populationSize>30</populationSize>
-  <currentPopMember>9</currentPopMember>
+  <currentPopMember>0</currentPopMember>
   <games>0</games>
 </PenaGarrisonPopulation>

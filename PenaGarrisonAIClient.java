@@ -62,12 +62,11 @@ public class PenaGarrisonAIClient extends TeamClient {
 	//how often can A* be re-run
 	@SuppressWarnings("unused")
 	private static int REMAP = 20;
-	private static int REPLAN = 1000;
+	private static int REPLAN = 250;
 	//when was the last A* run?
 	@SuppressWarnings("unused")
 	private int lastRun = 0;
 	
-	double BASE_BUYING_DISTANCE = 0;	//minimum distance from other bases
 	boolean buyShip = false;			//determines if a ship can be bought
 	boolean buyBase = false;			//determines if a base can be bought 
 
@@ -88,16 +87,13 @@ public class PenaGarrisonAIClient extends TeamClient {
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		Set<Asteroid> currAsts = new HashSet<Asteroid>();
-		Set<Beacon> currBeacons = new HashSet<Beacon>();
-		Set<Base> currBases = new HashSet<Base>();
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				shipState = new SingleShipState(ship);
 				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship, currAsts, currBeacons, currBases);
+				action = getAsteroidCollectorAction(space, ship);
 				actions.put(ship.getId(), action);
 			}
 		}
@@ -114,9 +110,8 @@ public class PenaGarrisonAIClient extends TeamClient {
 	 * @param currBases 
 	 * @return
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship,
-			Set<Asteroid> currAsts, Set<Beacon> currBeacons, Set<Base> currBases) {
-		if(space.getCurrentTimestep() == 0 || (space.getCurrentTimestep() - lastRun) > REPLAN){
+	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space, Ship ship) {
+		if((space.getCurrentTimestep() - lastRun) > REPLAN){
 			lastRun = space.getCurrentTimestep();
 			plan.replan(space);
 		}
@@ -125,18 +120,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 			AbstractAction current = ship.getCurrentAction();
 			AbstractAction newAction = current;
 			
-			System.out.println("getting movement");
 			newAction = plan.getAction(space, ship.getId());
 			
 			if(newAction != null){
-				System.out.println("movin'");
 				return newAction;
 			} else {
-				System.out.println("doing nuthin'");
 				return new DoNothingAction();
 			}
 		}catch (Exception e){
-			System.out.println("Timed out.");
 			return new DoNothingAction();
 		}
 	}
@@ -299,12 +290,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
 			if (asteroid == null || !asteroid.isAlive()) {
 				finishedAsteroids.add(asteroid);
-				plan.removeTarget(asteroidId);
 			}
-		}
-
-		for (Asteroid asteroid : finishedAsteroids) {
-			targets.remove(asteroid);
 		}
 	}
 	
@@ -314,14 +300,14 @@ public class PenaGarrisonAIClient extends TeamClient {
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
 		targets = new HashMap<UUID, Ship>();
-		//makeNodes();
+		makeNodes();
 		moves = new Stack<Node>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		movements = new HashMap <UUID, Stack<Node>>();
 		
 		/* used to seed the initial population file
 		 * after seeding, comment out and run ladder
-		 * 29 times to get results for initial population
+		 * X times to get results for initial population
 		 */
 		//population = new PenaGarrisonPopulation();
 		
@@ -350,7 +336,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 		//with the ships and bases be approx. equal for this population member
 		shipsToBase = population.getPopulationInstance(population.getCurrentPopMember()).getshipsToBase();
 		
-		plan = new Planner(sightRadius, this.getTeamName());
+		plan = new Planner(sightRadius, this.getTeamName(), moveRate * 10);
 	}
 	
 	public static void touch(File file){
@@ -473,7 +459,7 @@ public class PenaGarrisonAIClient extends TeamClient {
 					Set<Base> bases = space.getBases();
 
 					// how far away is this ship to a base of my team?
-					double maxDistance = BASE_BUYING_DISTANCE;
+					double maxDistance = newBaseDist * 100;
 					for (Base base : bases) {
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
 							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());

@@ -31,33 +31,21 @@ public class Planner {
 	private Set<Beacon> currBeacons;  
 	private LinkedHashMap<UUID,ArrayList<UUID>> targets;
 	
+	int speed;
 	private int sight;
 	String teamName;
 	
-	public Planner(int range, String team){
+	public Planner(int range, String team, int speed){
 		currAsts = new HashSet<Asteroid>();
 		currBeacons = new HashSet<Beacon>();
 		targets = new LinkedHashMap<UUID,ArrayList<UUID>>();
 		
 		sight = range;
 		teamName = team;
+		this.speed = speed;
 	}
 	
 	public void plan(Toroidal2DPhysics space, UUID id){
-		Set<Asteroid> freeAsteroids = new HashSet<Asteroid>();
-		for(Asteroid ast : space.getAsteroids()){
-			if(!(currAsts.contains(ast))){
-				freeAsteroids.add(ast);
-			}
-		}
-		
-		Set<Beacon> freeBeacons = new HashSet<Beacon>();
-		for(Beacon b : space.getBeacons()){
-			if(!(currBeacons.contains(b))){
-				freeBeacons.add(b);
-			}
-		}
-		
 		Set<Base> currBases = new HashSet<Base>();
 		for(Base b : space.getBases()){
 			if(b.getTeamName().equalsIgnoreCase(teamName)){
@@ -68,50 +56,80 @@ public class Planner {
 		AbstractObject target = null;
 		int currTarget = 0;
 		Position loc = space.getObjectById(id).getPosition();
+		Ship ship = (Ship) space.getObjectById(id);
+		double energy = ship.getEnergy();
+		double resources = ship.getResources().getTotal();
 		
 		while(targets.get(id).size() < 5){
-			Ship ship = (Ship) space.getObjectById(id);
-			double energy = ship.getEnergy();
-			double resources = ship.getResources().getTotal();
+			Set<Asteroid> freeAsteroids = new HashSet<Asteroid>();
+			for(Asteroid ast : space.getAsteroids()){
+				if(!(currAsts.contains(ast))){
+					freeAsteroids.add(ast);
+				}
+			}
+			
+			Set<Beacon> freeBeacons = new HashSet<Beacon>();
+			for(Beacon b : space.getBeacons()){
+				if(!(currBeacons.contains(b))){
+					freeBeacons.add(b);
+				}
+			}
 			
 			if(resources >= 750){
+				//ship full, turn in
 				if(currTarget == 0){
+					//use the ship's location
 					target = getBestBase(space, ship, currBases);
 				} else {
+					//use the last object's location
 					target = getBestBase(space, space.getObjectById(targets.get(id).get(currTarget-1)), currBases);
 				}
-				
+				//empty resources for planning
 				resources = 0;
 			} else if(energy < 2000 && resources < 750){
+				//ship needs energy and isn't on it's way back to base
 				if(currTarget == 0){
+					//plan from the ship's location
 					target = getBestBeacon(space, ship, freeBeacons);
 				} else {
+					//plan from the last target's location
 					target = getBestBeacon(space, space.getObjectById(targets.get(id).get(currTarget-1)), freeBeacons);
 				}
+				//remove the beacon from consideration
 				currBeacons.add((Beacon) target);
+				//increase ship's energy for future planning
+				energy += Beacon.BEACON_ENERGY_BOOST;
 			} else {
+				//get an asteroid
 				if(currTarget == 0){
+					//search from the ships's location
 					target = getBestAsteroid(space, ship, freeAsteroids);
 				} else {
+					//search from the previous target's location
 					target = getBestAsteroid(space, space.getObjectById(targets.get(id).get(currTarget-1)), freeAsteroids);
 				}
+				//remove the asteroid from further consideration
 				currAsts.add((Asteroid) target);
+//				System.out.println(freeAsteroids.size());
+//				System.out.println(target);
+				//add the resources to the ship's hold for future planning
 				resources = resources + target.getResources().getTotal();
 			}
 			
 			targets.get(id).add(target.getId());
 			currTarget++;
 			
-			loc = target.getPosition();
 			AbstractAction temp = calcMove(space, loc, target.getPosition());
 			Movement actionMovement = temp.getMovement(space, ship);
 			double angularAccel = Math.abs(actionMovement.getAngularAccleration());
-			double angularInertia = (3.0 * ship.getMass() * ship.getRadius() * angularAccel) / 2.0; 
+			double angularInertia = (3.0 * ship.getMass() * ship.getRadius() * angularAccel) / 2.0;
 			double linearAccel = actionMovement.getTranslationalAcceleration().getMagnitude();
 			double linearInertia = ship.getMass() * linearAccel;
 			
 			int energyPenalty = (int) Math.floor(space.ENERGY_PENALTY * (angularInertia + linearInertia));
-			energy = energy - energyPenalty;
+			energy = energy - (energyPenalty + 100);
+			
+			loc = target.getPosition();
 		}
 	}
 	
@@ -222,8 +240,8 @@ public class Planner {
 		//get the unit vector to the target
 		Vector2D vect = space.findShortestDistanceVector(current, target).getUnitVector();
 		//set the unit vector to the fastest speed
-		vect.setX(vect.getXValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
-		vect.setY(vect.getYValue()*Movement.MAX_TRANSLATIONAL_ACCELERATION);
+		vect.setX(vect.getXValue()*speed);
+		vect.setY(vect.getYValue()*speed);
 		//move to the target
 		MoveAction temp = new MoveAction(space, current, target, vect);
 		temp.setKpRotational(0);
@@ -232,54 +250,60 @@ public class Planner {
 	}
 	
 	public AbstractAction getAction(Toroidal2DPhysics space, UUID id){
+		//checking ship existence
 		if(!(targets.containsKey(id))){
 			targets.put(id, new ArrayList<UUID>());
 		}
 		
+		//removing dead targets
+		removeTarget(space);
+		
+		//planning if needed
 		if(targets.get(id).isEmpty()){
-			System.out.println("Ship needs targets.");
 			plan(space, id);
 		}
 		
-		System.out.println("calculating movement");
+		//creating action
 		AbstractAction getCurrTarget = calcMove(
 				space,
 				space.getObjectById(id).getPosition(),
 				space.getObjectById(targets.get(id).get(0)).getPosition()
 				);
-		System.out.println("returning movement");
+		//returning action
 		return getCurrTarget;
 	}
 	
 	public void replan(Toroidal2DPhysics space){
-//		System.out.println("Replanning");
+		currAsts.clear();
+		currBeacons.clear();
 		for(Ship ship : space.getShips()){
-//			System.out.println(ship.getTeamName());
 			if(ship.getTeamName().equalsIgnoreCase(teamName)){
-//				System.out.println("Found one of my ships.");
-				
-				if(targets.containsKey(ship.getId())){
-//					System.out.println("Removing targets to replan."); 
-					targets.get(ship.getId()).removeAll(targets.get(ship.getId()));
-				}
-				
 				if(!(targets.containsKey(ship.getId()))){
-//					System.out.println("Adding it to targets.");
 					targets.put(ship.getId(), new ArrayList<UUID>());
 				}
-//				System.out.println("Planning");
+				
+				if(targets.containsKey(ship.getId())){
+					targets.get(ship.getId()).clear();;
+				}
+				
 				plan(space, ship.getId());
 			}
 		}
-//		System.out.println("planning done.");
 	}
 	
-	public void removeTarget(UUID id){
-//		System.out.println("removing asteroid");
-		for(ArrayList<UUID> target : targets.values()){
-			if(target.contains(id)){
-				target.remove(target.indexOf(id));
-				break;
+	public void removeTarget(Toroidal2DPhysics space){
+		for(Ship ship : space.getShips()){
+			if(targets.containsKey(ship.getId())){
+				for(UUID id : targets.get(ship.getId())){
+					if((space.getObjectById(id) == null) || !(space.getObjectById(id).isAlive())){
+						targets.get(ship.getId()).remove(targets.get(ship.getId()).indexOf(id));
+					}
+					if(space.getObjectById(id).getClass() == Base.class && ship.getResources().getTotal() < 750){
+						if(targets.get(ship.getId()).indexOf(id) == 0){
+							targets.get(ship.getId()).remove(0);
+						}
+					}
+				}
 			}
 		}
 	}
